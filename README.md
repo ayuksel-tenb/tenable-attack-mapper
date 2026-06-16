@@ -123,12 +123,19 @@ their own.
 
 ### Example chat prompts
 
+Start with a prompt that **maps your environment** — this is the first sync (pull
+from Security Center + map to ATT&CK). The follow-up prompts then work off that
+mapped result:
+
 ```
-Open the attack matrix.
+# 1. First — triggers the sync (pull findings + map to ATT&CK):
+Map my environment and show the top techniques by VPR.
+
+# 2. Then ask follow-ups about the mapped result:
 Which ATT&CK tactics and techniques should I watch for initial access?
 Which of my findings map to T1190 and T1059?
 Export a Navigator layer for repository 7 to layer.json.
-Map my Critical and High findings and show the top techniques by VPR.
+Open the attack matrix.
 ```
 
 ---
