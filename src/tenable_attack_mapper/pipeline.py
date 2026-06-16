@@ -79,11 +79,7 @@ def map_findings(
         else None
     )
     if config.enable_semantic and semantic_mapper is None:
-        warnings.append(
-            "Semantic fallback disabled (set ANTHROPIC_API_KEY, or "
-            "TASC_SEMANTIC_BACKEND=claude to use the Claude Code subscription); "
-            "deterministic chain only."
-        )
+        warnings.append("Semantic layer disabled; deterministic chain only.")
 
     # 1. Deterministic backbone for every finding; track which plugins it mapped.
     det_mappings: list[TechniqueMapping] = []

@@ -18,8 +18,7 @@ def config() -> Config:
         sc_url="https://localhost:8443/",
         sc_access_key="x",
         sc_secret_key="y",
-        anthropic_api_key=None,  # forces deterministic-only
-        enable_semantic=False,
+        enable_semantic=False,  # deterministic-only in tests
         confidence_threshold=0.5,
         data_dir=DATA_DIR,
     )

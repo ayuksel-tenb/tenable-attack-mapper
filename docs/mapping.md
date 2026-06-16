@@ -43,17 +43,12 @@ CVE carries a CWE.
 
 For findings the backbone can't reach, Claude reads the plugin name + description
 and proposes ATT&CK techniques, each with a confidence and reason_code — as
-auditable as a deterministic link. Two backends:
-
-| `TASC_SEMANTIC_BACKEND` | How it runs | Cost |
-|---|---|---|
-| `claude` (default in `.env_test`) | local `claude` CLI, batched | **Claude Code subscription** — no API key, no per-token cost |
-| `api` | Anthropic API (`ANTHROPIC_API_KEY`) | pay per token |
-
-Both cache per plugin (`data/.semantic_cache.json`, so re-runs are free), run
-concurrently (`TASC_SEMANTIC_WORKERS`), and map only CVE-bearing findings by default
-(`TASC_SEMANTIC_NO_CVE=true` to include compliance/scan-info). Model:
-`TASC_CLAUDE_MODEL` (claude backend) or `ANTHROPIC_MODEL` (api).
+auditable as a deterministic link. It runs through the local **`claude` CLI**
+(`claude -p`, batched), billed to your **Claude Code subscription** — no API key,
+no per-token cost. Results cache per plugin (`data/.semantic_cache.json`, so re-runs
+are free), run concurrently (`TASC_SEMANTIC_WORKERS`), and map only CVE-bearing
+findings by default (`TASC_SEMANTIC_NO_CVE=true` to include compliance/scan-info).
+Model: `TASC_CLAUDE_MODEL` (default `claude-haiku-4-5`).
 
 ## Coverage & honesty
 
@@ -61,6 +56,6 @@ concurrently (`TASC_SEMANTIC_WORKERS`), and map only CVE-bearing findings by def
   against them.
 - **Compliance / scan-info findings** (no CVE) are reported separately as
   out-of-scope — not mapping them is correct.
-- To raise coverage: set `ANTHROPIC_API_KEY` (semantic covers the long tail), warm
+- To raise coverage: the semantic layer (on by default) covers the long tail; warm
   the CVE→CWE cache with `TASC_USE_NVD=true`, or drop fuller MITRE/NVD exports into
   `data/` (same format, no code change).

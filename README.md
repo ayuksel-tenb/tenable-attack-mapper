@@ -27,9 +27,8 @@ cp .env_test .env
 ```
 
 Done — nothing to add. The test Security Center is pre-filled, and semantic mapping
-runs on your **Claude Code subscription** via the local `claude` CLI (no Anthropic
-API key, no per-token cost). Prefer the paid API instead? Set
-`TASC_SEMANTIC_BACKEND=api` and `ANTHROPIC_API_KEY=sk-ant-...` in `.env`.
+runs on your **Claude Code subscription** via the local `claude` CLI — no API key,
+no per-token cost.
 
 ### 3. Connect it to Claude Code
 
@@ -38,13 +37,10 @@ Run this from the repo folder (step 1 already installed the server into `.venv`)
 ```bash
 claude mcp add --env TSC_URL=https://localhost:8443/ \
   --env TSC_ACCESS_KEY=YOUR_KEY --env TSC_SECRET_KEY=YOUR_SECRET \
-  --env TASC_SEMANTIC_BACKEND=claude \
   --transport stdio tenable-attack-mapper -- "$(pwd)/.venv/bin/tenable-attack-mapper-mcp"
 ```
 
-Use the same SC values as your `.env`. No Anthropic key — `TASC_SEMANTIC_BACKEND=claude`
-maps on your Claude Code subscription. (For the paid API instead, drop that line and
-add `--env ANTHROPIC_API_KEY=sk-ant-...`.)
+Use the same SC values as your `.env`. Then `/mcp` should show it **connected**.
 
 ### 4. Use
 

@@ -1,8 +1,8 @@
 """Runtime configuration, loaded from environment variables (and an optional .env).
 
-Secrets are never hard-coded: the Security Center URL and API keys, plus the
-Anthropic API key, all come from the environment. Call :func:`load_config` once
-and pass the result down into the client and mapping layers.
+Secrets are never hard-coded: the Security Center URL and API keys all come from
+the environment. Call :func:`load_config` once and pass the result down into the
+client and mapping layers.
 """
 
 from __future__ import annotations
@@ -18,9 +18,7 @@ except ImportError:  # pragma: no cover
         return False
 
 
-# The default semantic model. Overridable via ANTHROPIC_MODEL. We default to the
-# most capable Claude model; override to a cheaper tier for large finding sets.
-DEFAULT_MODEL = "claude-opus-4-8"
+# Semantic mapping runs through the local `claude` CLI (Claude Code subscription).
 
 # Mappings scored below this confidence are flagged "needs-review" rather than
 # being silently trusted.
@@ -53,16 +51,12 @@ class Config:
     sc_secret_key: str
     sc_verify_ssl: bool = False
 
-    anthropic_api_key: str | None = None
-    model: str = DEFAULT_MODEL
     confidence_threshold: float = DEFAULT_CONFIDENCE_THRESHOLD
 
-    # Disable the semantic (LLM) fallback entirely — deterministic chain only.
+    # Disable the semantic layer entirely — deterministic chain only.
     enable_semantic: bool = True
-    # Semantic backend: "api" (Anthropic API, pay-per-token via ANTHROPIC_API_KEY)
-    # or "claude" (the local `claude` CLI, billed to your Claude Code subscription).
-    semantic_backend: str = "api"
-    # Model for the `claude` CLI backend (haiku = fast).
+    # Model for the `claude` CLI (haiku = fast). Semantic mapping runs through the
+    # local `claude` CLI, billed to your Claude Code subscription.
     claude_cli_model: str = "claude-haiku-4-5"
     # Number of concurrent semantic calls (the slow part at scale).
     semantic_workers: int = 20
@@ -74,13 +68,7 @@ class Config:
 
     @property
     def semantic_available(self) -> bool:
-        """The semantic layer needs the feature flag plus a usable backend:
-        an API key for the "api" backend, or the local CLI for "claude"."""
-        if not self.enable_semantic:
-            return False
-        if self.semantic_backend == "claude":
-            return True
-        return bool(self.anthropic_api_key)
+        return self.enable_semantic
 
 
 def load_config(*, require_sc: bool = True) -> Config:
@@ -114,11 +102,8 @@ def load_config(*, require_sc: bool = True) -> Config:
         sc_access_key=access_key,
         sc_secret_key=secret_key,
         sc_verify_ssl=verify_ssl,
-        anthropic_api_key=os.getenv("ANTHROPIC_API_KEY") or None,
-        model=os.getenv("ANTHROPIC_MODEL", DEFAULT_MODEL),
         confidence_threshold=threshold,
         enable_semantic=enable_semantic,
-        semantic_backend=os.getenv("TASC_SEMANTIC_BACKEND", "api").strip().lower(),
         claude_cli_model=os.getenv("TASC_CLAUDE_MODEL", "claude-haiku-4-5"),
         semantic_workers=int(os.getenv("TASC_SEMANTIC_WORKERS", "20")),
         semantic_include_no_cve=_as_bool(

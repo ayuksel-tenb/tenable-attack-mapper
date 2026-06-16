@@ -26,11 +26,11 @@ from ..pipeline import (
 )
 
 try:
-    from fastmcp import FastMCP
+    from mcp.server.fastmcp import FastMCP
 except ImportError as exc:  # pragma: no cover
     raise SystemExit(
-        "fastmcp is required for the MCP server. Install it with:\n"
-        "    pip install 'tenable-attack-mapper[mcp]'"
+        "The 'mcp' package is required for the MCP server. Install it with:\n"
+        "    pip install -e ."
     ) from exc
 
 mcp = FastMCP("tenable-attack-mapper")
@@ -158,7 +158,7 @@ def my_findings_for_techniques(
 
 
 def main() -> None:  # pragma: no cover
-    mcp.run()
+    mcp.run(transport="stdio")
 
 
 if __name__ == "__main__":  # pragma: no cover

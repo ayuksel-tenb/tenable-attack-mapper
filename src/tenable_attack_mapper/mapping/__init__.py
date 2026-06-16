@@ -2,11 +2,12 @@
 
 from .deterministic import DeterministicMapper
 from .reconcile import reconcile, score_techniques
-from .semantic import SemanticMapper
+from .semantic import ClaudeCliSemanticMapper, build_semantic_mapper
 
 __all__ = [
     "DeterministicMapper",
-    "SemanticMapper",
+    "ClaudeCliSemanticMapper",
+    "build_semantic_mapper",
     "reconcile",
     "score_techniques",
 ]

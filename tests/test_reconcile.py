@@ -52,29 +52,14 @@ def test_extract_json_array_handles_fences():
     assert _extract_json_array("no json here") == []
 
 
-def test_semantic_backend_factory_selects_claude(config):
+def test_semantic_mapper_is_claude_cli(config):
     from tenable_attack_mapper.mapping.semantic import (
         ClaudeCliSemanticMapper,
         build_semantic_mapper,
     )
 
-    config.semantic_backend = "claude"
     mapper = build_semantic_mapper(config, None)
     assert isinstance(mapper, ClaudeCliSemanticMapper)
-
-
-def test_semantic_model_params_are_model_aware():
-    """Haiku rejects adaptive thinking/effort; Opus accepts them."""
-    from tenable_attack_mapper.mapping.semantic import SemanticMapper
-
-    haiku = SemanticMapper(api_key="x", model="claude-haiku-4-5")._model_params()
-    assert "thinking" not in haiku
-    assert "effort" not in haiku["output_config"]
-    assert haiku["output_config"]["format"]["type"] == "json_schema"
-
-    opus = SemanticMapper(api_key="x", model="claude-opus-4-8")._model_params()
-    assert opus["thinking"]["type"] == "adaptive"
-    assert opus["output_config"]["effort"]
 
 
 def test_default_vpr_used_when_missing():
