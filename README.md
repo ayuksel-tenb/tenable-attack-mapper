@@ -57,15 +57,22 @@ each with an ⓘ rationale and an **Open in SC** deep link.
 
 ## Use it as an MCP server
 
-One published, `uvx`-runnable stdio server works in **both** runtimes — nothing
-runtime-specific to write.
+One `uvx`-runnable stdio server works in **both** runtimes — nothing
+runtime-specific to write. `uvx` installs and runs it from Git (no PyPI publish
+needed); the first launch resolves the package, then it's cached.
+
+> Registering a server does **not** pull any data. Claude Code only starts the
+> server (and `uvx` installs it on first run — confirm with `/mcp`). The first
+> real **sync happens when you prompt** and Claude calls a tool, e.g.
+> *"map my environment and show the top techniques."* There is no background sync.
 
 **Claude Code** — `claude mcp add`:
 
 ```bash
 claude mcp add --env TSC_URL=https://securitycenter.local \
   --env TSC_ACCESS_KEY=... --env TSC_SECRET_KEY=... --env ANTHROPIC_API_KEY=... \
-  --transport stdio tenable-attack-mapper -- uvx tenable-attack-mapper-mcp
+  --transport stdio tenable-attack-mapper -- \
+  uvx --from git+https://github.com/ayuksel-tenb/tenable-attack-mapper tenable-attack-mapper-mcp
 ```
 
 or `.mcp.json`:
@@ -75,7 +82,7 @@ or `.mcp.json`:
   "mcpServers": {
     "tenable-attack-mapper": {
       "command": "uvx",
-      "args": ["tenable-attack-mapper-mcp"],
+      "args": ["--from", "git+https://github.com/ayuksel-tenb/tenable-attack-mapper", "tenable-attack-mapper-mcp"],
       "env": {
         "TSC_URL": "https://securitycenter.local",
         "TSC_ACCESS_KEY": "...",
@@ -95,7 +102,7 @@ or `.mcp.json`:
   "mcp": {
     "tenable-attack-mapper": {
       "type": "local",
-      "command": ["uvx", "tenable-attack-mapper-mcp"],
+      "command": ["uvx", "--from", "git+https://github.com/ayuksel-tenb/tenable-attack-mapper", "tenable-attack-mapper-mcp"],
       "enabled": true,
       "environment": {
         "TSC_URL": "https://securitycenter.local",
@@ -108,8 +115,11 @@ or `.mcp.json`:
 }
 ```
 
+Once published to PyPI, the `--from git+...` part drops to just `uvx tenable-attack-mapper-mcp`.
+
 Tools exposed: `map_environment`, `export_navigator_layer`, `techniques_for_tactic`,
-`my_findings_for_techniques`.
+`my_findings_for_techniques` — Claude calls these when you ask; they're not run on
+their own.
 
 ### Example chat prompts
 
