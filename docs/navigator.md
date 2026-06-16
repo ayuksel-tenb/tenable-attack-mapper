@@ -23,20 +23,27 @@ You now have `layer.json` in your working directory.
 
 ## 2. Open the Navigator
 
-You have two equivalent options:
+You have three options:
 
 - **Hosted (no install):** open the public instance —
   **<https://mitre-attack.github.io/attack-navigator/>**
-- **Self-hosted (air-gapped / sensitive data):** run it locally so the layer
-  never leaves your machine:
+- **Self-hosted (air-gapped / sensitive data):** run the official Navigator
+  locally so the layer never leaves your machine:
 
   ```bash
   docker run -p 4200:4200 mitre/attack-navigator
   # then browse to http://localhost:4200
   ```
 
-  > For sensitive exposure data, prefer the self-hosted Navigator — the layer is
-  > uploaded into a browser app, and you control where that app runs.
+- **On-prem viewer with finding drill-down (recommended for sensitive data):**
+  the separate **[attack-navigator](https://github.com/ayuksel-tenb/attack-navigator)**
+  project is a `docker compose up` companion that stands up a local UI where you
+  click a technique to see its vulnerabilities and click a finding to open its
+  detail page on **your own Security Center**. Your data stays on-prem. It also
+  bundles the official Navigator for standard-format viewing.
+
+  > For sensitive exposure data, prefer either self-hosted option — the layer is
+  > only ever loaded into a browser app you control.
 
 ## 3. Upload (open) the layer file
 
