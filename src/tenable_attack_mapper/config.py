@@ -62,10 +62,10 @@ class Config:
     # Semantic backend: "api" (Anthropic API, pay-per-token via ANTHROPIC_API_KEY)
     # or "claude" (the local `claude` CLI, billed to your Claude Code subscription).
     semantic_backend: str = "api"
-    # Model for the `claude` CLI backend.
+    # Model for the `claude` CLI backend (haiku = fast).
     claude_cli_model: str = "claude-haiku-4-5"
     # Number of concurrent semantic calls (the slow part at scale).
-    semantic_workers: int = 8
+    semantic_workers: int = 24
     # By default the semantic layer maps only CVE-bearing findings (the in-scope
     # exploitation universe). Set True to also map no-CVE compliance/scan-info.
     semantic_include_no_cve: bool = False
@@ -120,7 +120,7 @@ def load_config(*, require_sc: bool = True) -> Config:
         enable_semantic=enable_semantic,
         semantic_backend=os.getenv("TASC_SEMANTIC_BACKEND", "api").strip().lower(),
         claude_cli_model=os.getenv("TASC_CLAUDE_MODEL", "claude-haiku-4-5"),
-        semantic_workers=int(os.getenv("TASC_SEMANTIC_WORKERS", "8")),
+        semantic_workers=int(os.getenv("TASC_SEMANTIC_WORKERS", "24")),
         semantic_include_no_cve=_as_bool(
             os.getenv("TASC_SEMANTIC_NO_CVE"), default=False
         ),
