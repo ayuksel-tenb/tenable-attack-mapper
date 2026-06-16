@@ -14,7 +14,7 @@ vulnerabilities behind it, each linking to its detail page on your Security Cent
 than pip, and it manages the right Python version for you. One-time install:
 
 ```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh      # Windows: see https://docs.astral.sh/uv/
+curl -LsSf https://astral.sh/uv/install.sh | bash    # Windows: see https://docs.astral.sh/uv/
 ```
 
 Then open a **new terminal** so `uv` is on your PATH.
