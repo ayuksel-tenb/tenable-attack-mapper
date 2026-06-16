@@ -71,8 +71,15 @@ Secrets only ever live in `.env` (git-ignored) — they are never hard-coded.
 tenable-attack-mapper run --repo 1 --out layer.json --report coverage.md
 ```
 
-Then drag `layer.json` into the [ATT&CK Navigator](https://mitre-attack.github.io/attack-navigator/).
-That's it.
+Then open it in the [ATT&CK Navigator](https://mitre-attack.github.io/attack-navigator/):
+**Open Existing Layer → Upload from local → pick `layer.json`**. Each mapped
+technique is colored by its VPR-weighted exposure score.
+
+![Example exposure preview](docs/img/sample-exposure-preview.png)
+
+> Full walkthrough — opening, self-hosting for sensitive data, reading the
+> matrix, and overlaying against detection coverage — in
+> **[docs/navigator.md](docs/navigator.md)**.
 
 Other handy commands:
 
