@@ -59,17 +59,28 @@ ATT&CK Navigator start screen
 └────────────────────────────────────────────┘
 ```
 
-## 4. Read the matrix
+## 4. Read the matrix — and drill into the vulnerabilities
+
+This is the point of the tool: a colored technique is only useful if you can see
+*which findings* drive it. Each technique carries that list.
 
 - **Cell color** = exposure score. The gradient runs pale → deep red
   (`#fff5f0` → `#67000d`), peaking at the highest-exposure technique (score 100).
-- **Grey cells** = `needs-review` mappings (low confidence) — audit these before
-  trusting them.
-- **Hover a cell** to see the comment: technique name, finding count, total VPR,
-  max confidence, and the review flag.
-- Open the **technique’s metadata** (right-click → *View technique*, or the
-  layer controls) to see the per-technique `findings`, `total_vpr`, `sources`
-  (deterministic vs semantic), and `needs_review` fields.
+  Every scored cell also has an explicit color, so it stays colored even if the
+  gradient doesn’t fully restore.
+- **Grey cells** = `needs-review` mappings (low confidence) — audit these first.
+- **Hover a technique → the tooltip lists its vulnerabilities.** After the
+  aggregate rows (finding count, total VPR, confidence, sources) and a divider,
+  you get one row per contributing finding:
+  `plugin 100001 → Apache Log4j RCE (Log4Shell) — CVE-2021-44228 — VPR 10.0 — ×12 hosts`.
+  (Capped at 40 per technique; a “+N more” row tells you if there are others.)
+- **Right-click a technique → its links.** The first link opens the ATT&CK
+  technique page; the rest open each finding’s **Tenable plugin page**
+  (`tenable.com/plugins/nessus/<id>`) so you can click straight through from a
+  technique to the underlying vulnerability.
+
+> So the flow is: spot a hot (dark) technique → hover to read the exact
+> vulnerabilities behind it → right-click to open those plugins in Tenable.
 
 ## 5. (Optional) Overlay against your detection coverage
 

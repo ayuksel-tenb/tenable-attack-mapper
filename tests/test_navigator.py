@@ -41,6 +41,21 @@ def test_findings_for_techniques_includes_subtechniques():
     assert result["T1059"] == ["p2"]  # base ID matches the sub-technique
 
 
+def test_technique_lists_its_findings(config, findings):
+    result = map_findings(config, findings)
+    t1190 = next(t for t in result.layer["techniques"] if t["techniqueID"] == "T1190")
+
+    # The contributing plugin appears in the metadata (tooltip) and links.
+    meta_values = " ".join(m.get("value", "") for m in t1190["metadata"])
+    assert "Log4Shell" in meta_values or "Log4j" in meta_values
+    assert "CVE-2021-44228" in meta_values
+
+    link_labels = " ".join(link.get("label", "") for link in t1190["links"])
+    assert "100001" in link_labels  # the Log4Shell plugin id
+    assert any("attack.mitre.org" in link.get("url", "") for link in t1190["links"])
+    assert any("tenable.com/plugins" in link.get("url", "") for link in t1190["links"])
+
+
 def test_empty_findings_yields_empty_layer(config):
     result = map_findings(config, [])
     assert result.layer["techniques"] == []

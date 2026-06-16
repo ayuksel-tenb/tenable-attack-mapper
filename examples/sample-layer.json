@@ -53,9 +53,36 @@
         {
           "name": "needs_review",
           "value": "false"
+        },
+        {
+          "divider": true
+        },
+        {
+          "name": "plugin 100001",
+          "value": "Apache Log4j RCE (Log4Shell) \u2014 CVE-2021-44228 \u2014 VPR 10.0 \u2014 \u00d712 hosts"
+        },
+        {
+          "name": "plugin 100004",
+          "value": "Microsoft Exchange SSRF (ProxyLogon) \u2014 CVE-2021-26855 \u2014 VPR 9.8 \u2014 \u00d72 hosts"
         }
       ],
-      "links": []
+      "links": [
+        {
+          "label": "ATT&CK: T1190",
+          "url": "https://attack.mitre.org/techniques/T1190"
+        },
+        {
+          "divider": true
+        },
+        {
+          "label": "100001: Apache Log4j RCE (Log4Shell)",
+          "url": "https://www.tenable.com/plugins/nessus/100001"
+        },
+        {
+          "label": "100004: Microsoft Exchange SSRF (ProxyLogon)",
+          "url": "https://www.tenable.com/plugins/nessus/100004"
+        }
+      ]
     },
     {
       "techniqueID": "T1203",
@@ -84,9 +111,28 @@
         {
           "name": "needs_review",
           "value": "false"
+        },
+        {
+          "divider": true
+        },
+        {
+          "name": "plugin 100001",
+          "value": "Apache Log4j RCE (Log4Shell) \u2014 CVE-2021-44228 \u2014 VPR 10.0 \u2014 \u00d712 hosts"
         }
       ],
-      "links": []
+      "links": [
+        {
+          "label": "ATT&CK: T1203",
+          "url": "https://attack.mitre.org/techniques/T1203"
+        },
+        {
+          "divider": true
+        },
+        {
+          "label": "100001: Apache Log4j RCE (Log4Shell)",
+          "url": "https://www.tenable.com/plugins/nessus/100001"
+        }
+      ]
     },
     {
       "techniqueID": "T1110",
@@ -115,9 +161,28 @@
         {
           "name": "needs_review",
           "value": "false"
+        },
+        {
+          "divider": true
+        },
+        {
+          "name": "plugin 100005",
+          "value": "Windows Netlogon EoP (Zerologon) \u2014 CVE-2020-1472 \u2014 VPR 9.1 \u2014 \u00d75 hosts"
         }
       ],
-      "links": []
+      "links": [
+        {
+          "label": "ATT&CK: T1110",
+          "url": "https://attack.mitre.org/techniques/T1110"
+        },
+        {
+          "divider": true
+        },
+        {
+          "label": "100005: Windows Netlogon EoP (Zerologon)",
+          "url": "https://www.tenable.com/plugins/nessus/100005"
+        }
+      ]
     },
     {
       "techniqueID": "T1083",
@@ -146,9 +211,28 @@
         {
           "name": "needs_review",
           "value": "false"
+        },
+        {
+          "divider": true
+        },
+        {
+          "name": "plugin 100002",
+          "value": "Citrix ADC Path Traversal \u2014 CVE-2019-19781 \u2014 VPR 8.5 \u2014 \u00d73 hosts"
         }
       ],
-      "links": []
+      "links": [
+        {
+          "label": "ATT&CK: T1083",
+          "url": "https://attack.mitre.org/techniques/T1083"
+        },
+        {
+          "divider": true
+        },
+        {
+          "label": "100002: Citrix ADC Path Traversal",
+          "url": "https://www.tenable.com/plugins/nessus/100002"
+        }
+      ]
     }
   ],
   "gradient": {

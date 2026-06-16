@@ -102,7 +102,12 @@ def map_findings(
     )
 
     catalog = load_technique_catalog(config)
-    layer = build_layer(scores, name=layer_name, technique_catalog=catalog)
+    layer = build_layer(
+        scores,
+        name=layer_name,
+        technique_catalog=catalog,
+        findings_by_plugin=findings_by_plugin,
+    )
     summary = build_summary(findings, mappings, scores)
 
     return MapResult(
