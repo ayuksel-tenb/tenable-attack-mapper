@@ -132,6 +132,7 @@ def map_findings(
         name=layer_name,
         technique_catalog=catalog,
         findings_by_plugin=findings_by_plugin,
+        mappings=mappings,
     )
     summary = build_summary(findings, mappings, scores)
 
