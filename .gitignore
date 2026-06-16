@@ -25,3 +25,6 @@ coverage-report.md
 .DS_Store
 .idea/
 .vscode/
+
+# NVD CVE->CWE cache (warmed at runtime)
+data/.nvd_cache.json

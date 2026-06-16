@@ -107,31 +107,110 @@ summarizes by VPR.
 
 ---
 
-## How it works
+## How the mapping works
 
 ```
 Security Center findings
         │
         ▼
-┌───────────────────────────┐     ┌──────────────────────────────┐
-│ Deterministic (primary)   │     │ Semantic fallback (Claude)    │
-│ CVE → CWE → CAPEC → ATT&CK │     │ plugin name + description →   │
-│ confidence ≈ 0.95         │     │ candidate techniques +        │
-│ full evidence trail       │     │ confidence + reason_code      │
-└───────────┬───────────────┘     └───────────────┬──────────────┘
-            └───────────────┬───────────────────────┘
-                            ▼
-                  reconcile + de-duplicate
-            (deterministic wins; flag < threshold)
-                            ▼
-              score by VPR × confidence × count
-                            ▼
-        Navigator layer (v4.5)  +  coverage report
+┌─────────────────────────────────────────────┐   ┌──────────────────────────────┐
+│ Deterministic backbone (primary, auditable) │   │ Semantic fallback (Claude)    │
+│  CVE ─► CWE ─► CAPEC ─► ATT&CK   conf 0.95   │   │ plugin name + description →   │
+│  CVE ─► CWE ───────────► ATT&CK  conf 0.80   │   │ candidate techniques +        │
+│  (full evidence trail on every mapping)      │   │ confidence + reason_code      │
+└──────────────────────┬──────────────────────┘   └───────────────┬──────────────┘
+                       └──────────────┬───────────────────────────┘
+                                      ▼
+                          reconcile + de-duplicate
+                  (deterministic wins; flag conf < threshold)
+                                      ▼
+                     score by VPR × confidence × finding count
+                                      ▼
+                Navigator layer (v4.5)  +  coverage report
 ```
 
-The deterministic chain is authoritative; the semantic layer is a documented,
-auditable fallback — never a silent guess. The two are reconciled, de-duplicated,
-and VPR drives the per-technique intensity in the Navigator layer.
+The deterministic backbone is authoritative; the semantic layer is a documented,
+auditable fallback — never a silent guess. Every mapping, from either source,
+carries a **confidence** and a **reason_code** so an analyst can audit each link.
+
+### 1. Pull findings
+
+`sc_client.py` (pyTenable) pulls open findings — plugin id/name, description, CVE,
+VPR — and de-duplicates to one record per plugin, accumulating host counts.
+
+### 2. Deterministic backbone (`mapping/deterministic.py`)
+
+The primary, evidence-backed source. Two paths run per resolved CWE:
+
+| Path | Chain | Confidence | Reason code |
+|------|-------|:---------:|-------------|
+| **A — CAPEC taxonomy** | `CVE → CWE → CAPEC → ATT&CK` | 0.95 | `chain:cve-cwe-capec-attack` |
+| **B — CWE bridge** | `CVE → CWE → ATT&CK` (direct) | 0.80 | `chain:cve-cwe-attack` |
+
+- **CVE → CWE** comes from, in order: the bundled `data/cve_cwe.json` seed, a
+  persistent on-disk cache (`data/.nvd_cache.json`), and — for genuine misses when
+  `TASC_USE_NVD=true` — a live NVD lookup (set `NVD_API_KEY` for higher rate
+  limits). Resolved CVEs are cached, so warming is a one-time cost.
+- **CWE → CAPEC → ATT&CK** uses MITRE’s CAPEC “Related Weaknesses” and
+  “Taxonomy Mappings” tables (`cwe_capec.json`, `capec_attack.json`). Authoritative
+  but sparse — many CWEs have no CAPEC that carries an ATT&CK mapping.
+- **CWE → ATT&CK bridge** (`cwe_attack.json`) is the *dense* complement: a curated
+  class-level mapping of the CWE Top 25 + common weakness classes to the technique
+  an adversary uses to exploit that class. Since every CVE has a CWE, this is the
+  high-coverage deterministic path. It scores a notch lower (0.80) because it is a
+  weakness-class generalization, not a per-pattern taxonomy link.
+
+Every mapping records its full trail in `evidence`, e.g.
+`CVE-2021-44228 → CWE-917 → CAPEC-242 → T1190`.
+
+### 3. Semantic fallback (`mapping/semantic.py`)
+
+For findings the deterministic backbone can’t reach (no CVE chain, or a gap in the
+tables), Claude reads the plugin name + description and proposes candidate ATT&CK
+techniques. A structured-output schema **forces** a `confidence` float and a
+`reason_code` onto every proposed mapping, so semantic links are as auditable as
+deterministic ones — the difference is provenance, not rigor. Disabled unless
+`ANTHROPIC_API_KEY` is set; run with `--no-semantic` to force backbone-only.
+
+### 4. Reconcile (`mapping/reconcile.py`)
+
+Both layers are merged and de-duplicated per (finding, technique). **Deterministic
+wins** on conflict; an agreeing semantic mapping is folded into the evidence. Any
+mapping below the confidence threshold (`TASC_CONFIDENCE_THRESHOLD`, default 0.5)
+is flagged `needs-review` rather than silently trusted.
+
+### 5. Score (`mapping/reconcile.py`)
+
+Each technique’s exposure score aggregates its findings, weighted by
+`effective_VPR × confidence × host_count`, then normalized so the highest-exposure
+technique is 100. That score drives the Navigator cell intensity.
+
+### Coverage & honesty
+
+Not every finding *should* map. The tool reports an **honest denominator**:
+
+- **CVE-bearing findings** are the in-scope universe for exploitation-technique
+  mapping; `cve_coverage_pct` is measured against these.
+- **Compliance / scan-info findings** (no CVE — CIS checks, banners, scan info) are
+  reported separately as out-of-scope. Not mapping them is correct, not a gap.
+
+**To raise CVE-bearing coverage** (the deterministic backbone is gated by how many
+CVEs you’ve resolved to CWEs):
+
+1. **Warm the CVE → CWE cache** — run once with `TASC_USE_NVD=true` (and ideally
+   `NVD_API_KEY`); resolved CVEs persist to `data/.nvd_cache.json`, so subsequent
+   runs are instant and offline. The CWE bridge then maps most CVE-bearing findings.
+2. **Enable the semantic layer** (`ANTHROPIC_API_KEY`) to cover the long tail —
+   findings with no clean CWE chain still get a confidence-scored technique.
+3. **Extend the tables** — drop fuller NVD / MITRE exports into `data/` (same
+   format, no code change).
+
+### Extending the reference data
+
+All hops are plain JSON in `data/` (`cve_cwe`, `cwe_capec`, `capec_attack`,
+`cwe_attack`, `attack_techniques`). The shipped tables are high-signal seeds;
+replace them with full MITRE/NVD exports for production breadth — the format is
+stable, so larger files are drop-in.
 
 ---
 
@@ -141,7 +220,7 @@ and VPR drives the per-technique intensity in the Navigator layer.
 src/tenable_attack_mapper/
   sc_client.py        # pyTenable → open findings
   mapping/
-    deterministic.py  # CVE→CWE→CAPEC→ATT&CK
+    deterministic.py  # CVE→CWE→CAPEC→ATT&CK + direct CWE→ATT&CK bridge
     semantic.py       # Claude fallback (confidence + reason_code per mapping)
     reconcile.py      # merge, de-dup, score, flag needs-review
   navigator.py        # ATT&CK Navigator layer v4.5

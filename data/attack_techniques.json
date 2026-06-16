@@ -8,8 +8,14 @@
   "T1110": { "name": "Brute Force", "tactics": ["credential-access"] },
   "T1190": { "name": "Exploit Public-Facing Application", "tactics": ["initial-access"] },
   "T1203": { "name": "Exploitation for Client Execution", "tactics": ["execution"] },
+  "T1212": { "name": "Exploitation for Credential Access", "tactics": ["credential-access"] },
+  "T1040": { "name": "Network Sniffing", "tactics": ["credential-access", "discovery"] },
   "T1499": { "name": "Endpoint Denial of Service", "tactics": ["impact"] },
+  "T1505.003": { "name": "Web Shell", "tactics": ["persistence"] },
+  "T1552": { "name": "Unsecured Credentials", "tactics": ["credential-access"] },
   "T1557": { "name": "Adversary-in-the-Middle", "tactics": ["credential-access", "collection"] },
   "T1565": { "name": "Data Manipulation", "tactics": ["impact"] },
-  "T1574": { "name": "Hijack Execution Flow", "tactics": ["persistence", "privilege-escalation", "defense-evasion"] }
+  "T1574": { "name": "Hijack Execution Flow", "tactics": ["persistence", "privilege-escalation", "defense-evasion"] },
+  "T1574.002": { "name": "DLL Side-Loading", "tactics": ["persistence", "privilege-escalation", "defense-evasion"] },
+  "T1592": { "name": "Gather Victim Host Information", "tactics": ["reconnaissance"] }
 }

@@ -93,6 +93,9 @@ def map_findings(
         except SemanticMappingError as exc:
             warnings.append(f"Semantic mapping failed for {finding.plugin_id}: {exc}")
 
+    # Persist any CVE->CWE lookups made this run so the next run is instant.
+    deterministic_mapper.save_cache()
+
     mappings = reconcile(
         det_mappings, sem_mappings, confidence_threshold=config.confidence_threshold
     )

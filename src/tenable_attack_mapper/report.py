@@ -24,16 +24,32 @@ def build_summary(
     needs_review = [s for s in scores if s.needs_review]
     unmapped = [f for f in findings if f.plugin_id not in mapped_plugins]
 
+    # Honest denominator: only CVE-bearing findings are in scope for exploitation
+    # technique mapping. Compliance / scan-info findings (no CVE) are a separate,
+    # legitimately-unmapped class — not a coverage failure.
+    with_cve = [f for f in findings if f.cves]
+    no_cve = [f for f in findings if not f.cves]
+    mapped_with_cve = [f for f in with_cve if f.plugin_id in mapped_plugins]
+    unmapped_with_cve = [f for f in with_cve if f.plugin_id not in mapped_plugins]
+    cve_coverage = (
+        round(100 * len(mapped_with_cve) / len(with_cve), 1) if with_cve else 0.0
+    )
+
     return {
         "findings_total": len(findings),
         "findings_mapped": len(mapped_plugins),
         "findings_unmapped": len(unmapped),
+        "findings_with_cve": len(with_cve),
+        "findings_no_cve": len(no_cve),
+        "findings_with_cve_mapped": len(mapped_with_cve),
+        "cve_coverage_pct": cve_coverage,
         "mappings_total": len(mappings),
         "mappings_deterministic": len(deterministic),
         "mappings_semantic": len(semantic),
         "techniques_total": len(scores),
         "techniques_needs_review": len(needs_review),
         "unmapped_plugins": [f.plugin_id for f in unmapped],
+        "unmapped_with_cve_plugins": [f.plugin_id for f in unmapped_with_cve],
     }
 
 
@@ -49,9 +65,13 @@ def render_markdown(
     lines: list[str] = ["# ATT&CK Coverage Summary", ""]
 
     lines += [
-        f"- **Findings:** {summary['findings_mapped']} mapped / "
-        f"{summary['findings_total']} total "
-        f"({summary['findings_unmapped']} unmapped)",
+        f"- **Findings:** {summary['findings_total']} total — "
+        f"{summary.get('findings_with_cve', 0)} CVE-bearing (in scope), "
+        f"{summary.get('findings_no_cve', 0)} compliance/scan-info (out of scope)",
+        f"- **Exploitation coverage:** "
+        f"{summary.get('findings_with_cve_mapped', 0)}/"
+        f"{summary.get('findings_with_cve', 0)} CVE-bearing findings mapped "
+        f"({summary.get('cve_coverage_pct', 0)}%)",
         f"- **Mappings:** {summary['mappings_total']} "
         f"({summary['mappings_deterministic']} deterministic, "
         f"{summary['mappings_semantic']} semantic)",

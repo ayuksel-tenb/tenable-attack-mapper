@@ -30,17 +30,17 @@
       "techniqueID": "T1190",
       "score": 100.0,
       "color": "#67000d",
-      "comment": "Exploit Public-Facing Application\n2 finding(s), total VPR 19.8, confidence 0.95",
+      "comment": "Exploit Public-Facing Application\n3 finding(s), total VPR 28.3, confidence 0.95",
       "enabled": true,
       "showSubtechniques": false,
       "metadata": [
         {
           "name": "findings",
-          "value": "2"
+          "value": "3"
         },
         {
           "name": "total_vpr",
-          "value": "19.8"
+          "value": "28.3"
         },
         {
           "name": "max_confidence",
@@ -64,6 +64,10 @@
         {
           "name": "plugin 100004",
           "value": "Microsoft Exchange SSRF (ProxyLogon) \u2014 CVE-2021-26855 \u2014 VPR 9.8 \u2014 \u00d72 hosts"
+        },
+        {
+          "name": "plugin 100002",
+          "value": "Citrix ADC Path Traversal \u2014 CVE-2019-19781 \u2014 VPR 8.5 \u2014 \u00d73 hosts"
         }
       ],
       "links": [
@@ -81,13 +85,17 @@
         {
           "label": "100004: Microsoft Exchange SSRF (ProxyLogon)",
           "url": "https://www.tenable.com/plugins/nessus/100004"
+        },
+        {
+          "label": "100002: Citrix ADC Path Traversal",
+          "url": "https://www.tenable.com/plugins/nessus/100002"
         }
       ]
     },
     {
       "techniqueID": "T1203",
-      "score": 85.96,
-      "color": "#911e1e",
+      "score": 74.5,
+      "color": "#b2362c",
       "comment": "Exploitation for Client Execution\n1 finding(s), total VPR 10.0, confidence 0.95",
       "enabled": true,
       "showSubtechniques": false,
@@ -136,8 +144,8 @@
     },
     {
       "techniqueID": "T1110",
-      "score": 32.59,
-      "color": "#fc9a84",
+      "score": 28.25,
+      "color": "#fda692",
       "comment": "Brute Force\n1 finding(s), total VPR 9.1, confidence 0.95",
       "enabled": true,
       "showSubtechniques": false,
@@ -186,8 +194,8 @@
     },
     {
       "techniqueID": "T1083",
-      "score": 18.27,
-      "color": "#fec2b3",
+      "score": 15.83,
+      "color": "#fec9bb",
       "comment": "File and Directory Discovery\n1 finding(s), total VPR 8.5, confidence 0.95",
       "enabled": true,
       "showSubtechniques": false,

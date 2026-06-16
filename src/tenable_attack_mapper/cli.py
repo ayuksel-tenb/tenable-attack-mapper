@@ -140,7 +140,16 @@ def _cmd_techniques(args) -> int:
 
 def _print_summary(result, out_path, report_path) -> None:
     s = result.summary
-    print(f"Findings mapped : {s['findings_mapped']}/{s['findings_total']}")
+    print(
+        f"Findings        : {s['findings_total']} total "
+        f"({s.get('findings_with_cve', 0)} CVE-bearing, "
+        f"{s.get('findings_no_cve', 0)} compliance/info)"
+    )
+    print(
+        f"Exploit coverage: {s.get('findings_with_cve_mapped', 0)}/"
+        f"{s.get('findings_with_cve', 0)} CVE-bearing mapped "
+        f"({s.get('cve_coverage_pct', 0)}%)"
+    )
     print(
         f"Mappings        : {s['mappings_total']} "
         f"({s['mappings_deterministic']} deterministic, "
