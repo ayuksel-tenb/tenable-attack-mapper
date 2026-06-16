@@ -61,13 +61,16 @@ Use the same SC values as your `.env`. Then `/mcp` should show it **connected**.
 Open Claude Code **in this folder** and ask — in order:
 
 ```
-Map my environment and show the top techniques by VPR.
+Open the attack matrix.
 ```
-> The first prompt is the sync: it pulls findings from Security Center and maps
-> them to ATT&CK. Then follow up:
+> **Do this first.** The first sync pulls your findings and maps them to ATT&CK —
+> on a cold cache that's a few minutes (it maps ~1000 findings via the `claude`
+> CLI). "Open the attack matrix" runs it as a **visible** step so you can watch
+> progress, then opens the browser. After it finishes, the cache makes everything
+> below instant.
 
 ```
-Open the attack matrix.
+Map my environment and show the top techniques by VPR.
 Which of my findings map to T1190 and T1059?
 ```
 
@@ -87,6 +90,19 @@ rest, asks Claude (via the local `claude` CLI) which techniques apply. The seman
 step runs `claude` over your CVE-bearing findings, batched and in parallel — for
 ~1000 findings that's a few minutes. Results are cached (`data/.semantic_cache.json`),
 so re-runs are instant.
+**Tip:** do the first (cold-cache) sync with **"Open the attack matrix"** or the CLI
+(`uv run tenable-attack-mapper run --out layer.json`) so you can watch progress —
+then `Map my environment` and other prompts return instantly from the cache. An MCP
+tool call (like `Map my environment`) blocks with no progress bar, so on a cold cache
+it can look hung for a few minutes when it's just mapping.
+
+**After `claude mcp add`, why isn't it "connected" instantly — what is it waiting
+for?**
+Only for Claude Code to spawn the server and do a handshake — a few seconds to load
+the Python package and register its 4 tools. It does **not** connect to Security
+Center at connect time (that happens only when a tool runs). `/mcp` should show it
+connected within a few seconds; if it lingers, the Python import is just warming up,
+not waiting on your SC or network.
 
 **What data leaves my machine? Do my IPs / ports / hostnames get sent anywhere?**
 **No host-identifying data leaves your machine.** For the semantic step, the only
