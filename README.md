@@ -17,17 +17,23 @@ own Security Center.
 
 ### 1. Install
 
+Use a virtual environment — it isolates dependencies and avoids clashes with a
+base/conda Python (e.g. a `pyopenssl`/`cryptography` conflict):
+
 ```bash
 git clone https://github.com/ayuksel-tenb/tenable-attack-mapper
 cd tenable-attack-mapper
-pip install -e .                         # Python 3.12+
+python3 -m venv .venv && source .venv/bin/activate    # Python 3.12+ · Windows: .venv\Scripts\activate
+pip install -e .
 tenable-attack-mapper --help
 ```
 
+> Re-activate the venv (`source .venv/bin/activate`) in any new terminal before
+> running the commands below.
+>
 > Prefer `uv`? Install it once — `curl -LsSf https://astral.sh/uv/install.sh | sh`
-> (then open a new terminal) — and `uv run tenable-attack-mapper --help` works with
-> no manual install. `uv` is also what the MCP config below uses (`uvx`), so install
-> it if you want the MCP server.
+> (then open a new terminal) — and `uv run tenable-attack-mapper --help` needs no
+> venv and no manual install. `uv` also powers the MCP config below (`uvx`).
 
 ### 2. Configure
 
@@ -45,11 +51,11 @@ browser) — just ask in Claude Code:
 
 > **"Open the attack matrix."**
 
-or do it directly:
+or do it directly (uses the `tenable-attack-mapper` command installed in step 1):
 
 ```bash
 git clone https://github.com/ayuksel-tenb/attack-navigator
-uv run tenable-attack-mapper run --out attack-navigator/layers/layer.json
+tenable-attack-mapper run --out attack-navigator/layers/layer.json
 cd attack-navigator && docker compose up -d viewer
 open http://localhost:8080            # macOS · Linux: xdg-open · Windows: start
 ```
