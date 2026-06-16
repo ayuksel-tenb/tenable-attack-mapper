@@ -89,6 +89,8 @@ exploitable-but-undetected techniques.
 | Symptom | Cause / fix |
 |---|---|
 | “Invalid layer file” | You picked a non-layer JSON. Make sure it’s the `--out` file, not the coverage report. |
+| Cells have a score on hover but aren’t **colored** | The layer now bakes an explicit `color` into every scored technique, so this is fixed regardless of gradient restore. If you still see it, your Navigator failed to fully load the layer — re-upload, or use a current Navigator (see below). |
+| “Outdated Layer / version mismatch” or “upgrade to ATT&CK v19?” prompt | The layer omits the `attack` field so the Navigator assumes its own current version (no upgrade prompt). A residual *layer-format* version warning means your **Navigator app is older than 4.9.0** — use the current hosted Navigator, or pull a recent self-hosted image: `docker pull mitre/attack-navigator:latest`. The layer still loads either way; the warning is non-fatal. |
 | Matrix opens but nothing is colored | No findings mapped (e.g. all findings were compliance checks with no CVE, or the seed reference tables didn’t cover your CVEs). Check `coverage.md` — extend `data/*.json` with fuller NVD/CAPEC exports for more coverage. |
 | Techniques look under-mapped | The bundled reference tables are small seed sets. Replace `data/cve_cwe.json`, `data/cwe_capec.json`, `data/capec_attack.json` with full MITRE/NVD exports — the format is unchanged, so it’s a drop-in. |
 | Sub-technique not shown | Sub-techniques (e.g. `T1059.007`) only render when their parent row is expanded; the layer sets `showSubtechniques` for mapped sub-techniques. |
