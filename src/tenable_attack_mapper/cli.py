@@ -17,6 +17,17 @@ import sys
 
 from .config import load_config
 from .pipeline import findings_for_techniques, run
+from .sc_client import DEFAULT_SEVERITIES
+
+
+def _resolve_severities(args):
+    """Explicit --severity wins; else default to actionable severities unless
+    --include-info opts Info back in."""
+    if args.severities:
+        return args.severities
+    if getattr(args, "include_info", False):
+        return None  # all severities
+    return list(DEFAULT_SEVERITIES)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -50,7 +61,12 @@ def _build_parser() -> argparse.ArgumentParser:
         "--severity",
         action="append",
         dest="severities",
-        help="Severity to include (repeatable), e.g. --severity High --severity Critical.",
+        help="Severity to include (repeatable). Default: Critical, High, Medium, Low.",
+    )
+    run_p.add_argument(
+        "--include-info",
+        action="store_true",
+        help="Also include Info-severity findings (excluded by default).",
     )
     run_p.add_argument(
         "--out",
@@ -102,7 +118,7 @@ def _cmd_run(args) -> int:
         config,
         repository_id=args.repo,
         query_id=args.query,
-        severities=args.severities,
+        severities=_resolve_severities(args),
         out_path=args.out,
         report_path=args.report,
     )
@@ -125,7 +141,12 @@ def _cmd_techniques(args) -> int:
     if args.no_semantic:
         config.enable_semantic = False
 
-    result = run(config, repository_id=args.repo, query_id=args.query)
+    result = run(
+        config,
+        repository_id=args.repo,
+        query_id=args.query,
+        severities=list(DEFAULT_SEVERITIES),
+    )
     matches = findings_for_techniques(result.mappings, args.technique_ids)
     by_plugin = {f.plugin_id: f for f in result.findings}
 

@@ -80,21 +80,31 @@ def map_findings(
             "deterministic chain only."
         )
 
+    # 1. Deterministic backbone for every finding; track which plugins it mapped.
     det_mappings: list[TechniqueMapping] = []
-    sem_mappings: list[TechniqueMapping] = []
-
+    mapped_plugins: set[str] = set()
     for finding in findings:
         det = deterministic_mapper.map_finding(finding)
-        det_mappings.extend(det)
-        if det or semantic_mapper is None:
-            continue
-        try:
-            sem_mappings.extend(semantic_mapper.map_finding(finding))
-        except SemanticMappingError as exc:
-            warnings.append(f"Semantic mapping failed for {finding.plugin_id}: {exc}")
-
-    # Persist any CVE->CWE lookups made this run so the next run is instant.
+        if det:
+            det_mappings.extend(det)
+            mapped_plugins.add(finding.plugin_id)
     deterministic_mapper.save_cache()
+
+    # 2. Semantic fallback for the unmapped findings. By default only CVE-bearing
+    #    findings (the in-scope exploitation universe) are sent to the LLM — this
+    #    avoids spending calls on compliance/scan-info. Runs concurrently.
+    sem_mappings: list[TechniqueMapping] = []
+    if semantic_mapper is not None:
+        pending = [
+            f
+            for f in findings
+            if f.plugin_id not in mapped_plugins
+            and (f.cves or config.semantic_include_no_cve)
+        ]
+        sem_mappings = _run_semantic(
+            semantic_mapper, pending, config.semantic_workers, warnings
+        )
+        semantic_mapper.save_cache()
 
     mappings = reconcile(
         det_mappings, sem_mappings, confidence_threshold=config.confidence_threshold
@@ -173,7 +183,37 @@ def findings_for_techniques(
 
 
 def _build_semantic_mapper(config: Config) -> SemanticMapper:
-    return SemanticMapper(api_key=config.anthropic_api_key, model=config.model)
+    return SemanticMapper(
+        api_key=config.anthropic_api_key,
+        model=config.model,
+        cache_path=config.data_dir / ".semantic_cache.json",
+    )
+
+
+def _run_semantic(
+    mapper: SemanticMapper,
+    pending: Sequence[Finding],
+    workers: int,
+    warnings: list[str],
+) -> list[TechniqueMapping]:
+    """Map the pending findings semantically, concurrently. Failures are recorded
+    as warnings and skipped (one bad finding never aborts the run)."""
+    if not pending:
+        return []
+
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    out: list[TechniqueMapping] = []
+    max_workers = max(1, min(workers, len(pending)))
+    with ThreadPoolExecutor(max_workers=max_workers) as pool:
+        futures = {pool.submit(mapper.map_finding, f): f for f in pending}
+        for future in as_completed(futures):
+            finding = futures[future]
+            try:
+                out.extend(future.result())
+            except SemanticMappingError as exc:
+                warnings.append(f"Semantic mapping failed for {finding.plugin_id}: {exc}")
+    return out
 
 
 def _layer_label(repository_id, query_id) -> str:

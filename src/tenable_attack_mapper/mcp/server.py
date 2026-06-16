@@ -53,13 +53,16 @@ def _scoped_run(
     severities: list[str] | None,
     no_semantic: bool,
 ) -> MapResult:
+    from ..sc_client import DEFAULT_SEVERITIES
+
     key = (str(repository_id), str(query_id))
     config = _config(no_semantic)
     result = run(
         config,
         repository_id=repository_id,
         query_id=query_id,
-        severities=severities,
+        # Default to actionable severities (exclude Info) unless caller overrides.
+        severities=severities if severities is not None else list(DEFAULT_SEVERITIES),
     )
     _last_runs[key] = result
     return result

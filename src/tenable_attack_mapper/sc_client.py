@@ -19,6 +19,12 @@ from collections.abc import Iterable, Iterator
 from .config import Config
 from .models import Finding
 
+# Default severity scope: the actionable vulnerabilities. "Info" findings (scan
+# info, port scans, asset inventory) are excluded by default — they aren't
+# exploitation-relevant and would inflate the universe. Matches Security Center's
+# default Vulnerability Summary view.
+DEFAULT_SEVERITIES = ("Critical", "High", "Medium", "Low")
+
 # Fields requested from the analysis endpoint. Keep this minimal — we only need
 # what feeds the mapping pipeline.
 _VULN_FIELDS = (

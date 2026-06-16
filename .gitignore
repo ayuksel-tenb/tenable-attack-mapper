@@ -31,3 +31,4 @@ data/.nvd_cache.json
 
 # Local artifacts from live runs (exposure data — never commit)
 sc-live-layer.json
+data/.semantic_cache.json

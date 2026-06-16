@@ -14,6 +14,8 @@ mapping whenever a deterministic mapping exists for the same finding+technique.
 from __future__ import annotations
 
 import json
+import threading
+from pathlib import Path
 
 from ..models import Finding, TechniqueMapping
 
@@ -77,6 +79,7 @@ class SemanticMapper:
         model: str,
         effort: str = "low",
         max_techniques: int = 5,
+        cache_path: str | Path | None = None,
     ):
         from anthropic import Anthropic
 
@@ -84,9 +87,22 @@ class SemanticMapper:
         self._model = model
         self._effort = effort
         self._max_techniques = max_techniques
+        # Persistent per-plugin cache so re-runs (and incremental scans) don't
+        # re-pay for plugins already mapped. Keyed by plugin id.
+        self._cache_path = Path(cache_path) if cache_path else None
+        self._cache: dict[str, list[dict]] = _load_cache(self._cache_path)
+        self._lock = threading.Lock()
 
     def map_finding(self, finding: Finding) -> list[TechniqueMapping]:
-        """Propose semantic mappings for one finding (possibly empty)."""
+        """Propose semantic mappings for one finding (possibly empty).
+
+        Thread-safe and cached: safe to call concurrently across findings.
+        """
+        with self._lock:
+            cached = self._cache.get(finding.plugin_id)
+        if cached is not None:
+            return [_mapping_from_cache(finding.plugin_id, item) for item in cached]
+
         prompt = self._build_prompt(finding)
 
         try:
@@ -105,7 +121,23 @@ class SemanticMapper:
             raise SemanticMappingError(str(exc)) from exc
 
         data = _extract_json(response)
-        return self._to_mappings(finding, data)
+        mappings = self._to_mappings(finding, data)
+        with self._lock:
+            self._cache[finding.plugin_id] = [m.to_dict() for m in mappings]
+        return mappings
+
+    def save_cache(self) -> None:
+        """Persist the per-plugin semantic cache."""
+        if not self._cache_path:
+            return
+        with self._lock:
+            snapshot = dict(self._cache)
+        try:
+            self._cache_path.parent.mkdir(parents=True, exist_ok=True)
+            with self._cache_path.open("w", encoding="utf-8") as fh:
+                json.dump(snapshot, fh)
+        except OSError:  # pragma: no cover - best effort
+            pass
 
     def _build_prompt(self, finding: Finding) -> str:
         cves = ", ".join(finding.cves) if finding.cves else "none"
@@ -143,6 +175,29 @@ class SemanticMapper:
 
 class SemanticMappingError(RuntimeError):
     """Raised when the semantic layer fails for a finding."""
+
+
+def _load_cache(path: Path | None) -> dict[str, list[dict]]:
+    if not path or not path.is_file():
+        return {}
+    try:
+        with path.open(encoding="utf-8") as fh:
+            data = json.load(fh)
+        return {k: v for k, v in data.items() if isinstance(v, list)}
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+def _mapping_from_cache(plugin_id: str, item: dict) -> TechniqueMapping:
+    return TechniqueMapping(
+        plugin_id=plugin_id,
+        technique_id=item["technique_id"],
+        source="semantic",
+        confidence=float(item.get("confidence", 0.0)),
+        reason_code=item.get("reason_code", "semantic"),
+        evidence=item.get("evidence", ""),
+        needs_review=item.get("needs_review", False),
+    )
 
 
 def _extract_json(response) -> dict:

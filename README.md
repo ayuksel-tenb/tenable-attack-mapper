@@ -189,10 +189,13 @@ technique is 100. That score drives the Navigator cell intensity.
 
 Not every finding *should* map. The tool reports an **honest denominator**:
 
+- **Severity scope.** By default only **Critical / High / Medium / Low** findings
+  are pulled — `Info` (scan info, port scans, asset inventory) is excluded, matching
+  Security Center's default Vulnerability Summary. Use `--include-info` to opt in.
 - **CVE-bearing findings** are the in-scope universe for exploitation-technique
   mapping; `cve_coverage_pct` is measured against these.
-- **Compliance / scan-info findings** (no CVE — CIS checks, banners, scan info) are
-  reported separately as out-of-scope. Not mapping them is correct, not a gap.
+- **Compliance / scan-info findings** (no CVE — CIS checks, banners) are reported
+  separately as out-of-scope. Not mapping them is correct, not a gap.
 
 **To raise CVE-bearing coverage** (the deterministic backbone is gated by how many
 CVEs you’ve resolved to CWEs):
@@ -201,7 +204,12 @@ CVEs you’ve resolved to CWEs):
    `NVD_API_KEY`); resolved CVEs persist to `data/.nvd_cache.json`, so subsequent
    runs are instant and offline. The CWE bridge then maps most CVE-bearing findings.
 2. **Enable the semantic layer** (`ANTHROPIC_API_KEY`) to cover the long tail —
-   findings with no clean CWE chain still get a confidence-scored technique.
+   findings with no clean CWE chain still get a confidence-scored technique. It
+   runs concurrently (`TASC_SEMANTIC_WORKERS`), caches per-plugin results
+   (`data/.semantic_cache.json`, so re-runs are cheap), and by default sends only
+   CVE-bearing findings to the LLM. For bulk runs set a cheaper model
+   (`ANTHROPIC_MODEL=claude-haiku-4-5`) — it's ample for plugin→technique
+   classification and far cheaper across hundreds of findings.
 3. **Extend the tables** — drop fuller NVD / MITRE exports into `data/` (same
    format, no code change).
 

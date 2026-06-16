@@ -59,6 +59,11 @@ class Config:
 
     # Disable the semantic (LLM) fallback entirely — deterministic chain only.
     enable_semantic: bool = True
+    # Number of concurrent semantic API calls (the slow part at scale).
+    semantic_workers: int = 8
+    # By default the semantic layer maps only CVE-bearing findings (the in-scope
+    # exploitation universe). Set True to also map no-CVE compliance/scan-info.
+    semantic_include_no_cve: bool = False
 
     data_dir: Path = field(default_factory=_data_dir)
 
@@ -101,6 +106,10 @@ def load_config(*, require_sc: bool = True) -> Config:
         model=os.getenv("ANTHROPIC_MODEL", DEFAULT_MODEL),
         confidence_threshold=threshold,
         enable_semantic=enable_semantic,
+        semantic_workers=int(os.getenv("TASC_SEMANTIC_WORKERS", "8")),
+        semantic_include_no_cve=_as_bool(
+            os.getenv("TASC_SEMANTIC_NO_CVE"), default=False
+        ),
     )
 
 
