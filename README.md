@@ -31,16 +31,16 @@ only value to add — the test Security Center is pre-filled.
 
 ### 3. Connect it to Claude Code
 
+Run this from the repo folder (step 1 already installed the server into `.venv`):
+
 ```bash
 claude mcp add --env TSC_URL=https://localhost:8443/ \
   --env TSC_ACCESS_KEY=YOUR_KEY --env TSC_SECRET_KEY=YOUR_SECRET \
   --env ANTHROPIC_API_KEY=sk-ant-... \
-  --transport stdio tenable-attack-mapper -- \
-  uvx --from git+https://github.com/ayuksel-tenb/tenable-attack-mapper tenable-attack-mapper-mcp
+  --transport stdio tenable-attack-mapper -- "$(pwd)/.venv/bin/tenable-attack-mapper-mcp"
 ```
 
-Use the same values as your `.env`. (Needs `uv`:
-`curl -LsSf https://astral.sh/uv/install.sh | sh`, then a new terminal.)
+Use the same values as your `.env`. That's it — no extra tools needed.
 
 ### 4. Use
 
