@@ -124,16 +124,7 @@ class SemanticMapper:
 
     def save_cache(self) -> None:
         """Persist the per-plugin semantic cache."""
-        if not self._cache_path:
-            return
-        with self._lock:
-            snapshot = dict(self._cache)
-        try:
-            self._cache_path.parent.mkdir(parents=True, exist_ok=True)
-            with self._cache_path.open("w", encoding="utf-8") as fh:
-                json.dump(snapshot, fh)
-        except OSError:  # pragma: no cover - best effort
-            pass
+        _persist_cache(self._cache_path, self._cache, self._lock)
 
     def _model_params(self) -> dict:
         """Per-model request params. Structured output is universal; adaptive
@@ -161,25 +152,135 @@ class SemanticMapper:
         )
 
     def _to_mappings(self, finding: Finding, data: dict) -> list[TechniqueMapping]:
-        out: dict[str, TechniqueMapping] = {}
-        for item in data.get("mappings", [])[: self._max_techniques]:
-            technique = str(item.get("technique_id", "")).strip().upper()
-            if not technique.startswith(_TECH_PREFIX) or len(technique) < 4:
-                continue  # skip malformed IDs
-            confidence = _clamp(item.get("confidence", 0.0))
-            reason_code = str(item.get("reason_code") or "semantic").strip()
-            rationale = str(item.get("rationale") or "").strip()
-            if technique in out:
+        return _items_to_mappings(
+            finding.plugin_id, data.get("mappings", []), self._max_techniques
+        )
+
+
+    def map_many(self, findings, *, workers: int = 8):
+        """Map many findings concurrently (per-finding API calls).
+
+        Returns ``(mappings, errors)`` where errors are human-readable strings.
+        """
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+
+        out: list[TechniqueMapping] = []
+        errors: list[str] = []
+        if not findings:
+            return out, errors
+        with ThreadPoolExecutor(max_workers=max(1, min(workers, len(findings)))) as pool:
+            futures = {pool.submit(self.map_finding, f): f for f in findings}
+            for future in as_completed(futures):
+                finding = futures[future]
+                try:
+                    out.extend(future.result())
+                except SemanticMappingError as exc:
+                    errors.append(f"{finding.plugin_id}: {exc}")
+        return out, errors
+
+
+class ClaudeCliSemanticMapper:
+    """Semantic mapping via the local ``claude`` CLI (Claude Code subscription).
+
+    Same output contract as :class:`SemanticMapper`, but inference goes through
+    ``claude -p`` instead of the Anthropic API — so it's billed to your Claude Code
+    subscription, not per-token. Findings are batched (one CLI call per batch) to
+    amortize process startup. Results are cached per plugin id.
+    """
+
+    def __init__(
+        self,
+        *,
+        model: str = "claude-haiku-4-5",
+        cache_path: str | Path | None = None,
+        batch_size: int = 25,
+        max_techniques: int = 5,
+    ):
+        self._model = model
+        self._cache_path = Path(cache_path) if cache_path else None
+        self._cache: dict[str, list[dict]] = _load_cache(self._cache_path)
+        self._lock = threading.Lock()
+        self._batch_size = batch_size
+        self._max = max_techniques
+
+    def map_many(self, findings, *, workers: int = 4):
+        out: list[TechniqueMapping] = []
+        errors: list[str] = []
+        pending = []
+        for f in findings:
+            with self._lock:
+                cached = self._cache.get(f.plugin_id)
+            if cached is not None:
+                out.extend(_mapping_from_cache(f.plugin_id, item) for item in cached)
+            else:
+                pending.append(f)
+
+        if not pending:
+            return out, errors
+
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+
+        batches = [
+            pending[i : i + self._batch_size]
+            for i in range(0, len(pending), self._batch_size)
+        ]
+        # Keep concurrency modest — these run under your subscription's rate limits.
+        with ThreadPoolExecutor(max_workers=max(1, min(workers, len(batches)))) as pool:
+            futures = {pool.submit(self._map_batch, b): b for b in batches}
+            for future in as_completed(futures):
+                try:
+                    out.extend(future.result())
+                except Exception as exc:  # noqa: BLE001 - record and continue
+                    errors.append(f"claude batch: {exc}")
+        return out, errors
+
+    def _map_batch(self, batch) -> list[TechniqueMapping]:
+        text = self._run_claude(_claude_prompt(batch, self._max))
+        data = _extract_json_array(text)
+        by_id = {f.plugin_id: f for f in batch}
+        result: list[TechniqueMapping] = []
+        for item in data:
+            pid = str(item.get("plugin_id", "")).strip()
+            if pid not in by_id:
                 continue
-            out[technique] = TechniqueMapping(
-                plugin_id=finding.plugin_id,
-                technique_id=technique,
-                source="semantic",
-                confidence=confidence,
-                reason_code=f"semantic:{reason_code}",
-                evidence=rationale,
+            mappings = _items_to_mappings(pid, item.get("mappings", []), self._max)
+            result.extend(mappings)
+            with self._lock:
+                self._cache[pid] = [m.to_dict() for m in mappings]
+        return result
+
+    def _run_claude(self, prompt: str) -> str:
+        import os
+        import subprocess
+
+        claude_bin = os.getenv("TASC_CLAUDE_BIN", "claude")
+        try:
+            proc = subprocess.run(
+                [claude_bin, "-p", "--model", self._model],
+                input=prompt,
+                capture_output=True,
+                text=True,
+                timeout=240,
             )
-        return list(out.values())
+        except Exception as exc:  # noqa: BLE001
+            raise SemanticMappingError(f"claude CLI failed: {exc}") from exc
+        if proc.returncode != 0:
+            raise SemanticMappingError(
+                f"claude CLI exit {proc.returncode}: {proc.stderr[:200]}"
+            )
+        return proc.stdout
+
+    def save_cache(self) -> None:
+        _persist_cache(self._cache_path, self._cache, self._lock)
+
+
+def build_semantic_mapper(config, cache_path):
+    """Build the semantic mapper for the configured backend."""
+    if config.semantic_backend == "claude":
+        return ClaudeCliSemanticMapper(model=config.claude_cli_model, cache_path=cache_path)
+    return SemanticMapper(
+        api_key=config.anthropic_api_key, model=config.model, cache_path=cache_path
+    )
 
 
 class SemanticMappingError(RuntimeError):
@@ -207,6 +308,72 @@ def _mapping_from_cache(plugin_id: str, item: dict) -> TechniqueMapping:
         evidence=item.get("evidence", ""),
         needs_review=item.get("needs_review", False),
     )
+
+
+def _items_to_mappings(plugin_id, items, max_techniques) -> list[TechniqueMapping]:
+    """Build de-duplicated TechniqueMappings from raw model output items."""
+    out: dict[str, TechniqueMapping] = {}
+    for item in (items or [])[:max_techniques]:
+        technique = str(item.get("technique_id", "")).strip().upper()
+        if not technique.startswith(_TECH_PREFIX) or len(technique) < 4 or technique in out:
+            continue
+        reason_code = str(item.get("reason_code") or "semantic").strip()
+        out[technique] = TechniqueMapping(
+            plugin_id=plugin_id,
+            technique_id=technique,
+            source="semantic",
+            confidence=_clamp(item.get("confidence", 0.0)),
+            reason_code=f"semantic:{reason_code}",
+            evidence=str(item.get("rationale") or "").strip(),
+        )
+    return list(out.values())
+
+
+def _persist_cache(path: Path | None, cache: dict, lock: threading.Lock) -> None:
+    if not path:
+        return
+    with lock:
+        snapshot = dict(cache)
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("w", encoding="utf-8") as fh:
+            json.dump(snapshot, fh)
+    except OSError:  # pragma: no cover - best effort
+        pass
+
+
+def _claude_prompt(batch, max_techniques: int) -> str:
+    """Build a batched prompt for the `claude` CLI backend."""
+    items = [
+        {
+            "plugin_id": f.plugin_id,
+            "name": f.plugin_name,
+            "cves": f.cves[:5],
+            "desc": (f.description or "")[:600],
+        }
+        for f in batch
+    ]
+    return (
+        _SYSTEM
+        + "\n\nReturn ONLY a JSON array (no prose, no markdown fences). For each "
+        'finding return {"plugin_id": <id>, "mappings": [{"technique_id": "T....", '
+        '"confidence": 0.0-1.0, "reason_code": "short", "rationale": "one sentence"}]}. '
+        "Use only real MITRE ATT&CK enterprise technique IDs. Up to "
+        f"{max_techniques} techniques per finding.\n\nFindings:\n"
+        + json.dumps(items)
+    )
+
+
+def _extract_json_array(text: str):
+    import re
+
+    match = re.search(r"\[.*\]", text or "", re.S)
+    if not match:
+        return []
+    try:
+        return json.loads(match.group(0))
+    except json.JSONDecodeError:
+        return []
 
 
 def _extract_json(response) -> dict:

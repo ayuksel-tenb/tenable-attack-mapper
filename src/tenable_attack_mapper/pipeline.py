@@ -16,7 +16,7 @@ from pathlib import Path
 
 from .config import Config
 from .mapping import DeterministicMapper, reconcile, score_techniques
-from .mapping.semantic import SemanticMapper, SemanticMappingError
+from .mapping.semantic import build_semantic_mapper
 from .models import Finding, TechniqueMapping, TechniqueScore
 from .navigator import build_layer, write_layer
 from .report import build_summary, render_markdown
@@ -73,10 +73,15 @@ def map_findings(
     """
     warnings: list[str] = []
     deterministic_mapper = DeterministicMapper(config.data_dir)
-    semantic_mapper = _build_semantic_mapper(config) if config.semantic_available else None
+    semantic_mapper = (
+        build_semantic_mapper(config, config.data_dir / ".semantic_cache.json")
+        if config.semantic_available
+        else None
+    )
     if config.enable_semantic and semantic_mapper is None:
         warnings.append(
-            "Semantic fallback disabled (no ANTHROPIC_API_KEY); "
+            "Semantic fallback disabled (set ANTHROPIC_API_KEY, or "
+            "TASC_SEMANTIC_BACKEND=claude to use the Claude Code subscription); "
             "deterministic chain only."
         )
 
@@ -101,9 +106,10 @@ def map_findings(
             if f.plugin_id not in mapped_plugins
             and (f.cves or config.semantic_include_no_cve)
         ]
-        sem_mappings = _run_semantic(
-            semantic_mapper, pending, config.semantic_workers, warnings
+        sem_mappings, errs = semantic_mapper.map_many(
+            pending, workers=config.semantic_workers
         )
+        warnings.extend(f"Semantic mapping failed for {e}" for e in errs)
         semantic_mapper.save_cache()
 
     mappings = reconcile(
@@ -193,40 +199,6 @@ def findings_for_techniques(
             if tech == w or base == w:
                 result[w].add(mapping.plugin_id)
     return {k: sorted(v) for k, v in result.items()}
-
-
-def _build_semantic_mapper(config: Config) -> SemanticMapper:
-    return SemanticMapper(
-        api_key=config.anthropic_api_key,
-        model=config.model,
-        cache_path=config.data_dir / ".semantic_cache.json",
-    )
-
-
-def _run_semantic(
-    mapper: SemanticMapper,
-    pending: Sequence[Finding],
-    workers: int,
-    warnings: list[str],
-) -> list[TechniqueMapping]:
-    """Map the pending findings semantically, concurrently. Failures are recorded
-    as warnings and skipped (one bad finding never aborts the run)."""
-    if not pending:
-        return []
-
-    from concurrent.futures import ThreadPoolExecutor, as_completed
-
-    out: list[TechniqueMapping] = []
-    max_workers = max(1, min(workers, len(pending)))
-    with ThreadPoolExecutor(max_workers=max_workers) as pool:
-        futures = {pool.submit(mapper.map_finding, f): f for f in pending}
-        for future in as_completed(futures):
-            finding = futures[future]
-            try:
-                out.extend(future.result())
-            except SemanticMappingError as exc:
-                warnings.append(f"Semantic mapping failed for {finding.plugin_id}: {exc}")
-    return out
 
 
 def _layer_label(repository_id, query_id) -> str:

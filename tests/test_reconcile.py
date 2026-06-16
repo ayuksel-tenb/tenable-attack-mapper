@@ -44,6 +44,25 @@ def test_scoring_weights_by_vpr_and_normalizes_to_100():
     assert all(0.0 <= s.score <= 100.0 for s in scores)
 
 
+def test_extract_json_array_handles_fences():
+    from tenable_attack_mapper.mapping.semantic import _extract_json_array
+
+    fenced = '```json\n[{"plugin_id": "1", "mappings": []}]\n```'
+    assert _extract_json_array(fenced) == [{"plugin_id": "1", "mappings": []}]
+    assert _extract_json_array("no json here") == []
+
+
+def test_semantic_backend_factory_selects_claude(config):
+    from tenable_attack_mapper.mapping.semantic import (
+        ClaudeCliSemanticMapper,
+        build_semantic_mapper,
+    )
+
+    config.semantic_backend = "claude"
+    mapper = build_semantic_mapper(config, None)
+    assert isinstance(mapper, ClaudeCliSemanticMapper)
+
+
 def test_semantic_model_params_are_model_aware():
     """Haiku rejects adaptive thinking/effort; Opus accepts them."""
     from tenable_attack_mapper.mapping.semantic import SemanticMapper
