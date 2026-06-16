@@ -81,21 +81,23 @@ def load_config(*, require_sc: bool = True) -> Config:
     """
     load_dotenv()
 
-    sc_url = os.getenv("TASC_SC_URL", "").strip()
-    access_key = os.getenv("TASC_SC_ACCESS_KEY", "").strip()
-    secret_key = os.getenv("TASC_SC_SECRET_KEY", "").strip()
+    # Primary env var names are TSC_* (Tenable Security Center); the older
+    # TASC_SC_* names are still accepted as a fallback.
+    sc_url = _env("TSC_URL", "TASC_SC_URL")
+    access_key = _env("TSC_ACCESS_KEY", "TASC_SC_ACCESS_KEY")
+    secret_key = _env("TSC_SECRET_KEY", "TASC_SC_SECRET_KEY")
 
     if require_sc and not (sc_url and access_key and secret_key):
         raise RuntimeError(
-            "Missing Security Center credentials. Set TASC_SC_URL, "
-            "TASC_SC_ACCESS_KEY and TASC_SC_SECRET_KEY (see .env.example)."
+            "Missing Security Center credentials. Set TSC_URL, TSC_ACCESS_KEY and "
+            "TSC_SECRET_KEY (see .env.example, or copy .env_test to .env)."
         )
 
     threshold = float(
         os.getenv("TASC_CONFIDENCE_THRESHOLD", str(DEFAULT_CONFIDENCE_THRESHOLD))
     )
     enable_semantic = _as_bool(os.getenv("TASC_ENABLE_SEMANTIC"), default=True)
-    verify_ssl = _as_bool(os.getenv("TASC_SC_VERIFY_SSL"), default=False)
+    verify_ssl = _as_bool(_env("TSC_VERIFY_SSL", "TASC_SC_VERIFY_SSL") or None, default=False)
 
     return Config(
         sc_url=sc_url,
@@ -111,6 +113,15 @@ def load_config(*, require_sc: bool = True) -> Config:
             os.getenv("TASC_SEMANTIC_NO_CVE"), default=False
         ),
     )
+
+
+def _env(*names: str) -> str:
+    """First non-empty value among the given env var names (primary first)."""
+    for name in names:
+        val = os.getenv(name, "").strip()
+        if val:
+            return val
+    return ""
 
 
 def _as_bool(value: str | None, *, default: bool) -> bool:

@@ -1,8 +1,6 @@
-# Secrets
+# Secrets — .env is local; .env_test is a committed test template (no real keys)
 .env
-.env_test
-.env.*
-!.env.example
+.env.local
 
 # Python
 __pycache__/
@@ -32,3 +30,7 @@ data/.nvd_cache.json
 # Local artifacts from live runs (exposure data — never commit)
 sc-live-layer.json
 data/.semantic_cache.json
+
+# Generated coverage report and nested viewer clone (from the show-matrix skill)
+coverage.md
+/attack-navigator/

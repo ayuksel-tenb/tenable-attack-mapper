@@ -27,14 +27,15 @@ dependencies = [
     "pyTenable>=1.5",
     "anthropic>=0.40",
     "python-dotenv>=1.0",
+    "fastmcp>=2.0",
 ]
 
 [project.optional-dependencies]
-mcp = ["fastmcp>=2.0"]
-dev = ["pytest>=8.0", "fastmcp>=2.0"]
+dev = ["pytest>=8.0"]
 
 [project.scripts]
 tenable-attack-mapper = "tenable_attack_mapper.cli:main"
+tenable-attack-mapper-mcp = "tenable_attack_mapper.mcp.server:main"
 
 [project.urls]
 Homepage = "https://github.com/ayuksel-tenb/tenable-attack-mapper"
