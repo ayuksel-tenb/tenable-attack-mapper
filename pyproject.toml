@@ -1,0 +1,47 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "tenable-attack-mapper"
+version = "0.1.0"
+description = "Map Tenable Security Center findings to MITRE ATT&CK techniques and export a VPR-scored ATT&CK Navigator layer."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.12"
+authors = [{ name = "ayuksel-tenb" }]
+keywords = [
+    "mitre-attack",
+    "attack-mapping",
+    "navigator",
+    "vulnerability-management",
+    "purple-team",
+    "tenable",
+]
+classifiers = [
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Security",
+]
+dependencies = [
+    "pyTenable>=1.5",
+    "anthropic>=0.40",
+    "python-dotenv>=1.0",
+]
+
+[project.optional-dependencies]
+mcp = ["fastmcp>=2.0"]
+dev = ["pytest>=8.0", "fastmcp>=2.0"]
+
+[project.scripts]
+tenable-attack-mapper = "tenable_attack_mapper.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/ayuksel-tenb/tenable-attack-mapper"
+Repository = "https://github.com/ayuksel-tenb/tenable-attack-mapper"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tenable_attack_mapper"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"data" = "tenable_attack_mapper/data"

@@ -1,0 +1,28 @@
+{
+  "name": "tenable-attack-mapper",
+  "version": "0.1.0",
+  "description": "Map Tenable Security Center findings to MITRE ATT&CK techniques and export a VPR-scored ATT&CK Navigator layer.",
+  "author": {
+    "name": "ayuksel-tenb",
+    "url": "https://github.com/ayuksel-tenb"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/ayuksel-tenb/tenable-attack-mapper",
+  "keywords": [
+    "mitre-attack",
+    "attack-mapping",
+    "navigator",
+    "vulnerability-management",
+    "purple-team",
+    "tenable"
+  ],
+  "agents": [
+    "./agents/attack-mapper.md"
+  ],
+  "mcpServers": {
+    "tenable-attack-mapper": {
+      "command": "python",
+      "args": ["-m", "tenable_attack_mapper.mcp.server"]
+    }
+  }
+}

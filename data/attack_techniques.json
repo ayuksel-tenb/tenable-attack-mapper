@@ -1,0 +1,15 @@
+{
+  "_comment": "Minimal ATT&CK technique catalog (enterprise) for human-readable names and tactic context in reports/Navigator comments. Not exhaustive; unknown IDs degrade gracefully to the bare technique ID.",
+  "T1059": { "name": "Command and Scripting Interpreter", "tactics": ["execution"] },
+  "T1059.007": { "name": "JavaScript", "tactics": ["execution"] },
+  "T1068": { "name": "Exploitation for Privilege Escalation", "tactics": ["privilege-escalation"] },
+  "T1078": { "name": "Valid Accounts", "tactics": ["defense-evasion", "persistence", "privilege-escalation", "initial-access"] },
+  "T1083": { "name": "File and Directory Discovery", "tactics": ["discovery"] },
+  "T1110": { "name": "Brute Force", "tactics": ["credential-access"] },
+  "T1190": { "name": "Exploit Public-Facing Application", "tactics": ["initial-access"] },
+  "T1203": { "name": "Exploitation for Client Execution", "tactics": ["execution"] },
+  "T1499": { "name": "Endpoint Denial of Service", "tactics": ["impact"] },
+  "T1557": { "name": "Adversary-in-the-Middle", "tactics": ["credential-access", "collection"] },
+  "T1565": { "name": "Data Manipulation", "tactics": ["impact"] },
+  "T1574": { "name": "Hijack Execution Flow", "tactics": ["persistence", "privilege-escalation", "defense-evasion"] }
+}

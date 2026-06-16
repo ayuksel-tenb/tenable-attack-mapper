@@ -1,0 +1,23 @@
+{
+  "_comment": "CAPEC -> ATT&CK (enterprise) technique IDs, from MITRE's CAPEC 'Taxonomy Mappings' to ATT&CK. The authoritative end of the deterministic chain.",
+  "CAPEC-1": ["T1574"],
+  "CAPEC-12": ["T1190"],
+  "CAPEC-63": ["T1059.007"],
+  "CAPEC-66": ["T1190"],
+  "CAPEC-88": ["T1059"],
+  "CAPEC-94": ["T1557"],
+  "CAPEC-112": ["T1110"],
+  "CAPEC-114": ["T1078"],
+  "CAPEC-115": ["T1078"],
+  "CAPEC-122": ["T1068"],
+  "CAPEC-123": ["T1203"],
+  "CAPEC-126": ["T1083"],
+  "CAPEC-129": ["T1203"],
+  "CAPEC-153": ["T1565"],
+  "CAPEC-233": ["T1068"],
+  "CAPEC-242": ["T1190", "T1203"],
+  "CAPEC-253": ["T1190"],
+  "CAPEC-540": ["T1499"],
+  "CAPEC-586": ["T1190"],
+  "CAPEC-664": ["T1190"]
+}
