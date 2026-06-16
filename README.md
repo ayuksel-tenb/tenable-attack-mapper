@@ -8,19 +8,33 @@ vulnerabilities behind it, each linking to its detail page on your Security Cent
 
 ## Quickstart
 
-### 1. Install
+### 1. Install uv
+
+**uv** is a fast (Rust-based) Python package & virtualenv manager — ~8× quicker
+than pip, and it manages the right Python version for you. One-time install:
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh      # Windows: see https://docs.astral.sh/uv/
+```
+
+Then open a **new terminal** so `uv` is on your PATH.
+
+### 2. Install the tool
 
 ```bash
 git clone https://github.com/ayuksel-tenb/tenable-attack-mapper
 cd tenable-attack-mapper
-python3 -m venv .venv && source .venv/bin/activate    # Python 3.12+ · Windows: .venv\Scripts\activate
-pip install -e .
+uv venv && source .venv/bin/activate                 # Windows: .venv\Scripts\activate
+uv pip install -e .
 ```
 
-A virtual environment keeps deps isolated and avoids clashes with a base/conda
-Python. Re-activate it (`source .venv/bin/activate`) in any new terminal.
+The virtualenv keeps deps isolated (no clashes with a base/conda Python).
+Re-activate it (`source .venv/bin/activate`) in any new terminal.
 
-### 2. Configure
+> No uv? `python3 -m venv .venv && source .venv/bin/activate && pip install -e .`
+> (Python 3.12+) works too — just slower.
+
+### 3. Configure
 
 ```bash
 cp .env_test .env
@@ -30,9 +44,9 @@ Done — nothing to add. The test Security Center is pre-filled, and semantic ma
 runs on your **Claude Code subscription** via the local `claude` CLI — no API key,
 no per-token cost.
 
-### 3. Connect it to Claude Code
+### 4. Connect it to Claude Code
 
-Run this from the repo folder (step 1 already installed the server into `.venv`):
+Run this from the repo folder (step 2 already installed the server into `.venv`):
 
 ```bash
 claude mcp add --env TSC_URL=https://localhost:8443/ \
@@ -42,7 +56,7 @@ claude mcp add --env TSC_URL=https://localhost:8443/ \
 
 Use the same SC values as your `.env`. Then `/mcp` should show it **connected**.
 
-### 4. Use
+### 5. Use
 
 Open Claude Code **in this folder** and ask — in order:
 
