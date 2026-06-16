@@ -28,3 +28,6 @@ coverage-report.md
 
 # NVD CVE->CWE cache (warmed at runtime)
 data/.nvd_cache.json
+
+# Local artifacts from live runs (exposure data — never commit)
+sc-live-layer.json
