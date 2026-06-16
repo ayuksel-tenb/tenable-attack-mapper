@@ -44,6 +44,20 @@ def test_scoring_weights_by_vpr_and_normalizes_to_100():
     assert all(0.0 <= s.score <= 100.0 for s in scores)
 
 
+def test_semantic_model_params_are_model_aware():
+    """Haiku rejects adaptive thinking/effort; Opus accepts them."""
+    from tenable_attack_mapper.mapping.semantic import SemanticMapper
+
+    haiku = SemanticMapper(api_key="x", model="claude-haiku-4-5")._model_params()
+    assert "thinking" not in haiku
+    assert "effort" not in haiku["output_config"]
+    assert haiku["output_config"]["format"]["type"] == "json_schema"
+
+    opus = SemanticMapper(api_key="x", model="claude-opus-4-8")._model_params()
+    assert opus["thinking"]["type"] == "adaptive"
+    assert opus["output_config"]["effort"]
+
+
 def test_default_vpr_used_when_missing():
     findings = {"p1": Finding("p1", "no vpr", vpr_score=None, count=1)}
     scores = score_techniques([_det("p1", "T1190")], findings, confidence_threshold=0.5)

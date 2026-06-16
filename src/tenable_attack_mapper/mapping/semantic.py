@@ -109,13 +109,9 @@ class SemanticMapper:
             response = self._client.messages.create(
                 model=self._model,
                 max_tokens=2000,
-                thinking={"type": "adaptive"},
-                output_config={
-                    "effort": self._effort,
-                    "format": {"type": "json_schema", "schema": _OUTPUT_SCHEMA},
-                },
                 system=_SYSTEM,
                 messages=[{"role": "user", "content": prompt}],
+                **self._model_params(),
             )
         except Exception as exc:  # pragma: no cover - network/runtime guard
             raise SemanticMappingError(str(exc)) from exc
@@ -138,6 +134,19 @@ class SemanticMapper:
                 json.dump(snapshot, fh)
         except OSError:  # pragma: no cover - best effort
             pass
+
+    def _model_params(self) -> dict:
+        """Per-model request params. Structured output is universal; adaptive
+        thinking + effort are only sent to models that support them (Haiku 4.5
+        and Sonnet 4.5 reject both, so we send format only there)."""
+        fmt = {"format": {"type": "json_schema", "schema": _OUTPUT_SCHEMA}}
+        model = self._model.lower()
+        if "haiku" in model or "sonnet-4-5" in model:
+            return {"output_config": fmt}
+        return {
+            "thinking": {"type": "adaptive"},
+            "output_config": {"effort": self._effort, **fmt},
+        }
 
     def _build_prompt(self, finding: Finding) -> str:
         cves = ", ".join(finding.cves) if finding.cves else "none"
