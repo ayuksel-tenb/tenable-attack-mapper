@@ -44,22 +44,19 @@ def test_scoring_weights_by_vpr_and_normalizes_to_100():
     assert all(0.0 <= s.score <= 100.0 for s in scores)
 
 
-def test_extract_json_array_handles_fences():
-    from tenable_attack_mapper.mapping.semantic import _extract_json_array
-
-    fenced = '```json\n[{"plugin_id": "1", "mappings": []}]\n```'
-    assert _extract_json_array(fenced) == [{"plugin_id": "1", "mappings": []}]
-    assert _extract_json_array("no json here") == []
-
-
-def test_semantic_mapper_is_claude_cli(config):
+def test_build_semantic_mapper_selects_provider(config):
     from tenable_attack_mapper.mapping.semantic import (
-        ClaudeCliSemanticMapper,
+        GeminiSemanticMapper,
+        SemanticMapper,
         build_semantic_mapper,
     )
 
-    mapper = build_semantic_mapper(config, None)
-    assert isinstance(mapper, ClaudeCliSemanticMapper)
+    config.anthropic_api_key = "x"
+    assert isinstance(build_semantic_mapper(config, None), SemanticMapper)
+
+    config.semantic_backend = "gemini"
+    config.gemini_api_key = "x"
+    assert isinstance(build_semantic_mapper(config, None), GeminiSemanticMapper)
 
 
 def test_default_vpr_used_when_missing():

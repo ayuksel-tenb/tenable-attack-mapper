@@ -39,8 +39,13 @@ tenable-attack-mapper repo root.
    ```bash
    uv run tenable-attack-mapper run --out attack-navigator/layers/layer.json --report coverage.md
    ```
-   (No `uv`? Use `pipx run --spec . tenable-attack-mapper run ...` or
-   `pip install -e . && tenable-attack-mapper run ...`.)
+   - **Do NOT pipe through `tail`/`head`** — that hides the progress the tool prints
+     to stderr (`Pulled N findings`, `semantic: batch i/N done`). Let it stream.
+   - On a **cold cache** this takes a few minutes (maps ~thousands of findings via
+     the LLM API) — expected, **do not cancel**; relay the progress as it streams.
+     Re-runs are instant (cache).
+   - If slow/rate-limited, lower concurrency: `TASC_SEMANTIC_WORKERS=4 uv run …`.
+   - (No `uv`? `pip install -e . && tenable-attack-mapper run …`.)
 
 5. **Bring up the viewer** (custom ATT&CK matrix UI). If port 8080 is taken, set
    `VIEWER_PORT` to a free port (e.g. 8090) and use it everywhere below:

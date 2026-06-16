@@ -1,11 +1,14 @@
-"""Semantic ATT&CK mapping via the local ``claude`` CLI.
+"""Semantic ATT&CK mapping via a hosted LLM API.
 
 The documented, auditable fallback for findings the deterministic chain can't
-reach (no CVE, or a gap in the CWE/CAPEC/ATT&CK tables). Inference runs through
-``claude -p``, so it's billed to your **Claude Code subscription** — no API key,
-no per-token cost. Findings are batched (one CLI call per batch) to amortize
-process startup, and results are cached per plugin id. Every proposed mapping
-carries a ``confidence`` and a ``reason_code`` so a human can audit each link.
+reach (no CVE, or a gap in the CWE/CAPEC/ATT&CK tables). The model reads the
+plugin name + description and proposes ATT&CK techniques, each with a
+``confidence`` and ``reason_code`` so a human can audit each link. One call per
+finding, run concurrently; results are cached per plugin id so re-runs are free.
+
+Two providers (``TASC_SEMANTIC_BACKEND``):
+- ``anthropic`` (default) — the Anthropic API (``ANTHROPIC_API_KEY``).
+- ``gemini`` — the Google Gemini API (``GEMINI_API_KEY``).
 
 The deterministic layer is always primary; reconciliation drops a semantic
 mapping whenever a deterministic mapping exists for the same finding+technique.
@@ -14,10 +17,34 @@ mapping whenever a deterministic mapping exists for the same finding+technique.
 from __future__ import annotations
 
 import json
+import sys
 import threading
 from pathlib import Path
 
 from ..models import Finding, TechniqueMapping
+
+# Structured-output JSON schema (Anthropic). Numerical bounds validated client-side.
+_OUTPUT_SCHEMA = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "mappings": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "technique_id": {"type": "string"},
+                    "confidence": {"type": "number"},
+                    "reason_code": {"type": "string"},
+                    "rationale": {"type": "string"},
+                },
+                "required": ["technique_id", "confidence", "reason_code", "rationale"],
+            },
+        }
+    },
+    "required": ["mappings"],
+}
 
 _SYSTEM = (
     "You are a threat-informed vulnerability analyst. Map each Tenable "
@@ -28,114 +55,167 @@ _SYSTEM = (
     "fewer mappings with lower confidence."
 )
 
+# JSON shape appended to the per-finding prompt (used by the Gemini backend).
+_JSON_SHAPE = (
+    '\n\nReturn a JSON object: {"mappings": [{"technique_id": "T....", '
+    '"confidence": 0.0-1.0, "reason_code": "short", "rationale": "one sentence"}]}. '
+    "Use only real MITRE ATT&CK enterprise technique IDs."
+)
+
 # Technique-ID format guard so we never emit obviously malformed IDs.
 _TECH_PREFIX = "T"
 
 
-class ClaudeCliSemanticMapper:
-    """Semantic mapping via the local ``claude`` CLI (Claude Code subscription).
+class _ApiMapper:
+    """Shared per-finding cache + concurrent map_many for hosted-API providers."""
 
-    Findings are batched (one ``claude -p`` call per batch) and cached per plugin
-    id, so re-runs and incremental scans don't re-pay for plugins already mapped.
-    """
+    provider = "API"
 
-    def __init__(
-        self,
-        *,
-        model: str = "claude-haiku-4-5",
-        cache_path: str | Path | None = None,
-        batch_size: int = 25,
-        max_techniques: int = 5,
-    ):
-        self._model = model
+    def _init_cache(self, cache_path, max_techniques):
+        self._max = max_techniques
         self._cache_path = Path(cache_path) if cache_path else None
         self._cache: dict[str, list[dict]] = _load_cache(self._cache_path)
         self._lock = threading.Lock()
-        self._batch_size = batch_size
-        self._max = max_techniques
 
-    def map_many(self, findings, *, workers: int = 4):
-        """Map many findings, batched and concurrent.
+    def _cached(self, plugin_id):
+        with self._lock:
+            return self._cache.get(plugin_id)
 
-        Returns ``(mappings, errors)`` where errors are human-readable strings.
-        """
-        out: list[TechniqueMapping] = []
-        errors: list[str] = []
-        pending = []
-        for f in findings:
-            with self._lock:
-                cached = self._cache.get(f.plugin_id)
-            if cached is not None:
-                out.extend(_mapping_from_cache(f.plugin_id, item) for item in cached)
-            else:
-                pending.append(f)
+    def _store(self, plugin_id, mappings):
+        with self._lock:
+            self._cache[plugin_id] = [m.to_dict() for m in mappings]
 
-        if not pending:
-            return out, errors
-
+    def map_many(self, findings, *, workers: int = 8):
+        """Map many findings concurrently. Returns ``(mappings, errors)``."""
         from concurrent.futures import ThreadPoolExecutor, as_completed
 
-        batches = [
-            pending[i : i + self._batch_size]
-            for i in range(0, len(pending), self._batch_size)
-        ]
-        with ThreadPoolExecutor(max_workers=max(1, min(workers, len(batches)))) as pool:
-            futures = {pool.submit(self._map_batch, b): b for b in batches}
+        out: list[TechniqueMapping] = []
+        errors: list[str] = []
+        if not findings:
+            return out, errors
+        print(
+            f"semantic: mapping {len(findings)} finding(s) via {self.provider}, "
+            f"{workers} parallel…",
+            file=sys.stderr,
+            flush=True,
+        )
+        done = 0
+        with ThreadPoolExecutor(max_workers=max(1, min(workers, len(findings)))) as pool:
+            futures = {pool.submit(self.map_finding, f): f for f in findings}
             for future in as_completed(futures):
+                done += 1
+                finding = futures[future]
                 try:
                     out.extend(future.result())
-                except Exception as exc:  # noqa: BLE001 - record and continue
-                    errors.append(f"claude batch: {exc}")
+                except SemanticMappingError as exc:
+                    errors.append(f"{finding.plugin_id}: {exc}")
+                if done % 50 == 0 or done == len(findings):
+                    print(f"semantic: {done}/{len(findings)} done", file=sys.stderr, flush=True)
         return out, errors
-
-    def _map_batch(self, batch) -> list[TechniqueMapping]:
-        text = self._run_claude(_claude_prompt(batch, self._max))
-        data = _extract_json_array(text)
-        by_id = {f.plugin_id: f for f in batch}
-        result: list[TechniqueMapping] = []
-        for item in data:
-            pid = str(item.get("plugin_id", "")).strip()
-            if pid not in by_id:
-                continue
-            mappings = _items_to_mappings(pid, item.get("mappings", []), self._max)
-            result.extend(mappings)
-            with self._lock:
-                self._cache[pid] = [m.to_dict() for m in mappings]
-        return result
-
-    def _run_claude(self, prompt: str) -> str:
-        import os
-        import subprocess
-
-        claude_bin = os.getenv("TASC_CLAUDE_BIN", "claude")
-        try:
-            proc = subprocess.run(
-                [claude_bin, "-p", "--model", self._model],
-                input=prompt,
-                capture_output=True,
-                text=True,
-                timeout=240,
-            )
-        except Exception as exc:  # noqa: BLE001
-            raise SemanticMappingError(f"claude CLI failed: {exc}") from exc
-        if proc.returncode != 0:
-            raise SemanticMappingError(
-                f"claude CLI exit {proc.returncode}: {proc.stderr[:200]}"
-            )
-        return proc.stdout
 
     def save_cache(self) -> None:
         _persist_cache(self._cache_path, self._cache, self._lock)
 
 
-def build_semantic_mapper(config, cache_path) -> ClaudeCliSemanticMapper:
-    """Build the semantic mapper (claude CLI backend)."""
-    return ClaudeCliSemanticMapper(model=config.claude_cli_model, cache_path=cache_path)
+class SemanticMapper(_ApiMapper):
+    """Anthropic API backend: one structured-output call per finding."""
+
+    provider = "Anthropic API"
+
+    def __init__(self, *, api_key: str, model: str, effort: str = "low",
+                 max_techniques: int = 5, cache_path: str | Path | None = None):
+        from anthropic import Anthropic
+
+        self._client = Anthropic(api_key=api_key)
+        self._model = model
+        self._effort = effort
+        self._init_cache(cache_path, max_techniques)
+
+    def map_finding(self, finding: Finding) -> list[TechniqueMapping]:
+        cached = self._cached(finding.plugin_id)
+        if cached is not None:
+            return [_mapping_from_cache(finding.plugin_id, item) for item in cached]
+        try:
+            response = self._client.messages.create(
+                model=self._model,
+                max_tokens=2000,
+                system=_SYSTEM,
+                messages=[{"role": "user", "content": _finding_prompt(finding, self._max)}],
+                **self._model_params(),
+            )
+        except Exception as exc:  # pragma: no cover - network/runtime guard
+            raise SemanticMappingError(str(exc)) from exc
+        data = _extract_json(response)
+        mappings = _items_to_mappings(finding.plugin_id, data.get("mappings", []), self._max)
+        self._store(finding.plugin_id, mappings)
+        return mappings
+
+    def _model_params(self) -> dict:
+        """Adaptive thinking + effort only for models that support them (Haiku 4.5
+        and Sonnet 4.5 reject both, so they get structured-output format only)."""
+        fmt = {"format": {"type": "json_schema", "schema": _OUTPUT_SCHEMA}}
+        model = self._model.lower()
+        if "haiku" in model or "sonnet-4-5" in model:
+            return {"output_config": fmt}
+        return {"thinking": {"type": "adaptive"}, "output_config": {"effort": self._effort, **fmt}}
+
+
+class GeminiSemanticMapper(_ApiMapper):
+    """Google Gemini API backend: one JSON call per finding."""
+
+    provider = "Gemini API"
+
+    def __init__(self, *, api_key: str, model: str,
+                 max_techniques: int = 5, cache_path: str | Path | None = None):
+        from google import genai
+
+        self._genai = genai
+        self._client = genai.Client(api_key=api_key)
+        self._model = model
+        self._init_cache(cache_path, max_techniques)
+
+    def map_finding(self, finding: Finding) -> list[TechniqueMapping]:
+        cached = self._cached(finding.plugin_id)
+        if cached is not None:
+            return [_mapping_from_cache(finding.plugin_id, item) for item in cached]
+        from google.genai import types
+
+        try:
+            response = self._client.models.generate_content(
+                model=self._model,
+                contents=_finding_prompt(finding, self._max) + _JSON_SHAPE,
+                config=types.GenerateContentConfig(
+                    system_instruction=_SYSTEM,
+                    response_mime_type="application/json",
+                ),
+            )
+        except Exception as exc:  # pragma: no cover - network/runtime guard
+            raise SemanticMappingError(str(exc)) from exc
+        try:
+            data = json.loads(response.text or "{}")
+        except json.JSONDecodeError:
+            data = {}
+        mappings = _items_to_mappings(finding.plugin_id, data.get("mappings", []), self._max)
+        self._store(finding.plugin_id, mappings)
+        return mappings
+
+
+def build_semantic_mapper(config, cache_path) -> _ApiMapper:
+    """Build the semantic mapper for the configured provider."""
+    if config.semantic_backend == "gemini":
+        return GeminiSemanticMapper(
+            api_key=config.gemini_api_key, model=config.gemini_model, cache_path=cache_path
+        )
+    return SemanticMapper(
+        api_key=config.anthropic_api_key, model=config.model, cache_path=cache_path
+    )
 
 
 class SemanticMappingError(RuntimeError):
-    """Raised when the semantic layer fails for a batch."""
+    """Raised when the semantic layer fails for a finding."""
 
+
+# --- shared helpers -------------------------------------------------------
 
 def _load_cache(path: Path | None) -> dict[str, list[dict]]:
     if not path or not path.is_file():
@@ -161,7 +241,6 @@ def _mapping_from_cache(plugin_id: str, item: dict) -> TechniqueMapping:
 
 
 def _items_to_mappings(plugin_id, items, max_techniques) -> list[TechniqueMapping]:
-    """Build de-duplicated TechniqueMappings from raw model output items."""
     out: dict[str, TechniqueMapping] = {}
     for item in (items or [])[:max_techniques]:
         technique = str(item.get("technique_id", "")).strip().upper()
@@ -192,38 +271,24 @@ def _persist_cache(path: Path | None, cache: dict, lock: threading.Lock) -> None
         pass
 
 
-def _claude_prompt(batch, max_techniques: int) -> str:
-    """Build a batched prompt for the `claude` CLI."""
-    items = [
-        {
-            "plugin_id": f.plugin_id,
-            "name": f.plugin_name,
-            "cves": f.cves[:5],
-            "desc": (f.description or "")[:600],
-        }
-        for f in batch
-    ]
+def _finding_prompt(finding: Finding, max_techniques: int) -> str:
+    cves = ", ".join(finding.cves) if finding.cves else "none"
+    desc = finding.description[:4000] if finding.description else "(no description)"
     return (
-        _SYSTEM
-        + "\n\nReturn ONLY a JSON array (no prose, no markdown fences). For each "
-        'finding return {"plugin_id": <id>, "mappings": [{"technique_id": "T....", '
-        '"confidence": 0.0-1.0, "reason_code": "short", "rationale": "one sentence"}]}. '
-        "Use only real MITRE ATT&CK enterprise technique IDs. Up to "
-        f"{max_techniques} techniques per finding.\n\nFindings:\n"
-        + json.dumps(items)
+        f"Plugin ID: {finding.plugin_id}\nPlugin name: {finding.plugin_name}\n"
+        f"CVEs: {cves}\nSeverity: {finding.severity or 'unknown'}\n\n"
+        f"Description:\n{desc}\n\nReturn up to {max_techniques} ATT&CK techniques."
     )
 
 
-def _extract_json_array(text: str):
-    import re
-
-    match = re.search(r"\[.*\]", text or "", re.S)
-    if not match:
-        return []
-    try:
-        return json.loads(match.group(0))
-    except json.JSONDecodeError:
-        return []
+def _extract_json(response) -> dict:
+    for block in response.content:
+        if getattr(block, "type", None) == "text":
+            try:
+                return json.loads(block.text)
+            except (json.JSONDecodeError, AttributeError):
+                continue
+    return {"mappings": []}
 
 
 def _clamp(value, low: float = 0.0, high: float = 1.0) -> float:

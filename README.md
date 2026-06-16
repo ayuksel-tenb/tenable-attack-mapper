@@ -40,9 +40,9 @@ Re-activate it (`source .venv/bin/activate`) in any new terminal.
 cp .env_test .env
 ```
 
-Done — nothing to add. The test Security Center is pre-filled, and semantic mapping
-runs on your **Claude Code subscription** via the local `claude` CLI — no API key,
-no per-token cost.
+The test Security Center is pre-filled. Add one key in `.env` for semantic mapping:
+`ANTHROPIC_API_KEY=sk-ant-...`. Prefer Google Gemini? Set `TASC_SEMANTIC_BACKEND=gemini`
+and `GEMINI_API_KEY=...` (and `pip install -e '.[gemini]'`).
 
 ### 4. Connect it to Claude Code
 
@@ -51,10 +51,11 @@ Run this from the repo folder (step 2 already installed the server into `.venv`)
 ```bash
 claude mcp add --env TSC_URL=https://localhost:8443/ \
   --env TSC_ACCESS_KEY=YOUR_KEY --env TSC_SECRET_KEY=YOUR_SECRET \
+  --env ANTHROPIC_API_KEY=sk-ant-... \
   --transport stdio tenable-attack-mapper -- "$(pwd)/.venv/bin/tenable-attack-mapper-mcp"
 ```
 
-Use the same SC values as your `.env`. Then `/mcp` should show it **connected**.
+Use the same values as your `.env`. Then `/mcp` should show it **connected**.
 
 ### 5. Use
 
@@ -106,9 +107,9 @@ not waiting on your SC or network.
 
 **What data leaves my machine? Do my IPs / ports / hostnames get sent anywhere?**
 **No host-identifying data leaves your machine.** For the semantic step, the only
-thing sent to Anthropic (through your Claude Code subscription) is generic
+thing sent to your LLM provider (Anthropic, or Google Gemini if configured) is generic
 vulnerability info: the **plugin ID, plugin name, CVE IDs, and the plugin description**
-(truncated to 600 chars) — all of which is public, vendor-published data.
+(truncated) — all of which is public, vendor-published data.
 **Never sent:** IP addresses, ports, hostnames, MAC addresses, asset/host counts,
 VPR scores, or your Security Center URL and API keys. The tool doesn't even *fetch*
 host/IP/port fields from Security Center — it works per-plugin, not per-host.
@@ -121,9 +122,11 @@ Yes — fully local, no network calls, unless you opt into a live NVD CVE → CW
 Entirely on your machine. The layer JSON is written locally, the viewer runs in local
 containers, and `layers/*.json` is git-ignored so exposure data is never committed.
 
-**Does it use an Anthropic API key or cost per token?**
-No. Semantic mapping runs on your **Claude Code subscription** via the `claude` CLI —
-no API key, no per-token billing.
+**Which LLM does it use, and what does it cost?**
+Semantic mapping uses a hosted LLM API — **Anthropic** (default) or **Google Gemini**
+(`TASC_SEMANTIC_BACKEND=gemini`). You bring your own API key; cost is per-token, but a
+fast model (Haiku / Gemini Flash) over ~1000 findings is small, and results are cached
+so you only pay once per plugin.
 
 ---
 

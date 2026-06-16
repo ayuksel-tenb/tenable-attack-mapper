@@ -41,7 +41,8 @@ Same server, in `opencode.json`:
       "environment": {
         "TSC_URL": "https://securitycenter.local",
         "TSC_ACCESS_KEY": "...",
-        "TSC_SECRET_KEY": "..."
+        "TSC_SECRET_KEY": "...",
+        "ANTHROPIC_API_KEY": "..."
       }
     }
   }

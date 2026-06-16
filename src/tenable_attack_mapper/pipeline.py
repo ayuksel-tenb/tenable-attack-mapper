@@ -160,10 +160,14 @@ def run(
     """Pull findings from Security Center, map them, and optionally write outputs."""
     from .sc_client import SecurityCenterClient
 
+    import sys
+
+    print("Connecting to Security Center and pulling findings…", file=sys.stderr, flush=True)
     client = SecurityCenterClient(config)
     findings = client.fetch_findings(
         repository_id=repository_id, query_id=query_id, severities=severities
     )
+    print(f"Pulled {len(findings)} finding(s).", file=sys.stderr, flush=True)
 
     label = _layer_label(repository_id, query_id)
     result = map_findings(config, findings, layer_name=label)
