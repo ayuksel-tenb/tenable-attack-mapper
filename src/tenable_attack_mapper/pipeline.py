@@ -109,12 +109,24 @@ def map_findings(
     mappings = reconcile(
         det_mappings, sem_mappings, confidence_threshold=config.confidence_threshold
     )
+
+    # Validate technique IDs against the authoritative ATT&CK catalog and drop
+    # any the semantic layer may have hallucinated (non-existent technique IDs).
+    catalog = load_technique_catalog(config)
+    valid_ids = {k for k in catalog if not k.startswith("_")}
+    if valid_ids:
+        before = len(mappings)
+        mappings = [m for m in mappings if m.technique_id in valid_ids]
+        dropped = before - len(mappings)
+        if dropped:
+            warnings.append(
+                f"Dropped {dropped} mapping(s) referencing non-ATT&CK technique IDs."
+            )
+
     findings_by_plugin = {f.plugin_id: f for f in findings}
     scores = score_techniques(
         mappings, findings_by_plugin, confidence_threshold=config.confidence_threshold
     )
-
-    catalog = load_technique_catalog(config)
     layer = build_layer(
         scores,
         name=layer_name,
