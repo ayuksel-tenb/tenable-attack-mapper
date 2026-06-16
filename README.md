@@ -77,5 +77,39 @@ an ⓘ rationale and an **Open in SC** deep link.
 
 ---
 
+## FAQ
+
+**What does "Map my environment" actually do, and why does the first run take a few
+minutes?**
+It (1) connects to your Security Center and pulls open findings, (2) maps each to
+ATT&CK deterministically (CVE → CWE → CAPEC/ATT&CK — fully local), and (3) for the
+rest, asks Claude (via the local `claude` CLI) which techniques apply. The semantic
+step runs `claude` over your CVE-bearing findings, batched and in parallel — for
+~1000 findings that's a few minutes. Results are cached (`data/.semantic_cache.json`),
+so re-runs are instant.
+
+**What data leaves my machine? Do my IPs / ports / hostnames get sent anywhere?**
+**No host-identifying data leaves your machine.** For the semantic step, the only
+thing sent to Anthropic (through your Claude Code subscription) is generic
+vulnerability info: the **plugin ID, plugin name, CVE IDs, and the plugin description**
+(truncated to 600 chars) — all of which is public, vendor-published data.
+**Never sent:** IP addresses, ports, hostnames, MAC addresses, asset/host counts,
+VPR scores, or your Security Center URL and API keys. The tool doesn't even *fetch*
+host/IP/port fields from Security Center — it works per-plugin, not per-host.
+
+**Is the deterministic mapping offline?**
+Yes — fully local, no network calls, unless you opt into a live NVD CVE → CWE lookup
+(`TASC_USE_NVD=true`), which sends only CVE IDs to NVD.
+
+**Where do my findings and the ATT&CK layer live?**
+Entirely on your machine. The layer JSON is written locally, the viewer runs in local
+containers, and `layers/*.json` is git-ignored so exposure data is never committed.
+
+**Does it use an Anthropic API key or cost per token?**
+No. Semantic mapping runs on your **Claude Code subscription** via the `claude` CLI —
+no API key, no per-token billing.
+
+---
+
 **More:** [how mapping works](docs/mapping.md) · [CLI, OpenCode & tools](docs/usage.md) ·
 [the viewer](https://github.com/ayuksel-tenb/attack-navigator) · MIT licensed.
