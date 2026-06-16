@@ -20,10 +20,14 @@ own Security Center.
 ```bash
 git clone https://github.com/ayuksel-tenb/tenable-attack-mapper
 cd tenable-attack-mapper
-uv run tenable-attack-mapper --help      # uv pulls deps on first run
+pip install -e .                         # Python 3.12+
+tenable-attack-mapper --help
 ```
 
-> No `uv`? `pip install -e .` then `tenable-attack-mapper --help`. Python 3.12+.
+> Prefer `uv`? Install it once — `curl -LsSf https://astral.sh/uv/install.sh | sh`
+> (then open a new terminal) — and `uv run tenable-attack-mapper --help` works with
+> no manual install. `uv` is also what the MCP config below uses (`uvx`), so install
+> it if you want the MCP server.
 
 ### 2. Configure
 
