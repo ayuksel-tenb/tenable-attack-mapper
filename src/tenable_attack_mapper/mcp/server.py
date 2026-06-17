@@ -15,15 +15,11 @@ or via the plugin manifest in ``.claude-plugin/plugin.json``.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from ..config import Config, load_config
-from ..pipeline import (
-    MapResult,
-    findings_for_techniques,
-    load_technique_catalog,
-    run,
-)
+if TYPE_CHECKING:  # type-only; not imported at startup (keeps the handshake fast)
+    from ..config import Config
+    from ..pipeline import MapResult
 
 try:
     from mcp.server.fastmcp import FastMCP
@@ -41,6 +37,8 @@ _last_runs: dict[tuple[str, str], MapResult] = {}
 
 
 def _config(no_semantic: bool) -> Config:
+    from ..config import load_config
+
     config = load_config()
     if no_semantic:
         config.enable_semantic = False
@@ -53,6 +51,9 @@ def _scoped_run(
     severities: list[str] | None,
     no_semantic: bool,
 ) -> MapResult:
+    # Imported here (not at module load) so the MCP server starts with minimal
+    # imports and answers the connect handshake fast even under system load.
+    from ..pipeline import run
     from ..sc_client import DEFAULT_SEVERITIES
 
     key = (str(repository_id), str(query_id))
@@ -113,6 +114,9 @@ def techniques_for_tactic(tactic: str) -> dict[str, Any]:
     should I look at?" Tactic names use ATT&CK slug form, e.g. ``initial-access``,
     ``execution``, ``privilege-escalation``.
     """
+    from ..config import load_config
+    from ..pipeline import load_technique_catalog
+
     tactic = tactic.strip().lower().replace(" ", "-")
     catalog = load_technique_catalog(load_config(require_sc=False))
     techniques = [
@@ -136,6 +140,8 @@ def my_findings_for_techniques(
     and maps the environment first. Base-technique IDs (``T1190``) also match
     their sub-techniques.
     """
+    from ..pipeline import findings_for_techniques
+
     key = (str(repository_id), str(query_id))
     result = _last_runs.get(key)
     if result is None:
