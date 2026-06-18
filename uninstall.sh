@@ -1,31 +1,42 @@
 #!/usr/bin/env bash
 #
-# Fresh start: tear down the attack-navigator viewer this tool brings up — its
-# containers, the locally-built Navigator image, network and volumes. Only
-# attack-navigator resources are touched; unrelated containers are left alone.
+# Fresh start: blow away everything this project runs in Docker — the
+# attack-navigator viewer + official Navigator containers, their locally-built
+# image, network and volumes, plus any stray/old containers from earlier runs.
+# Only attack-navigator / tenable-attack-mapper resources are touched; unrelated
+# containers (e.g. a Tenable SC lab box) are never removed.
 #
 # Usage:  ./uninstall.sh
 set -euo pipefail
 cd "$(dirname "$0")"
 
-# If the viewer repo is checked out here (the show-matrix skill clones it into
-# ./attack-navigator), use its compose file for a clean teardown.
-if [ -f attack-navigator/docker-compose.yml ]; then
-  echo "==> docker compose down in ./attack-navigator"
-  ( cd attack-navigator && docker compose down --rmi local --volumes --remove-orphans ) 2>/dev/null || true
-fi
+echo "==> Compose teardown (if a viewer checkout is reachable)"
+# The viewer may be cloned here (./attack-navigator, by the show-matrix skill) or
+# sit beside this repo (../attack-navigator).
+for d in attack-navigator ../attack-navigator; do
+  if [ -f "$d/docker-compose.yml" ]; then
+    ( cd "$d" && docker compose down --rmi local --volumes --remove-orphans ) 2>/dev/null || true
+  fi
+done
 
-echo "==> Removing any stray attack-navigator containers and the built image"
-# Match by name / image so unrelated containers (e.g. a Tenable SC lab box) are
-# never removed.
-ids="$(docker ps -aq \
-  --filter "name=attack-navigator" \
-  --filter "ancestor=attack-navigator:local" \
-  --filter "ancestor=mitre/attack-navigator" 2>/dev/null | sort -u)"
+echo "==> Removing related containers (by compose project / name / image)"
+# Docker ANDs different --filter keys, so query each separately and union the IDs.
+ids="$(
+  docker ps -aq --filter "label=com.docker.compose.project=attack-navigator"
+  docker ps -aq --filter "name=attack-navigator"
+  docker ps -aq --filter "name=tenable-attack-mapper"
+  docker ps -aq --filter "ancestor=attack-navigator:local"
+  docker ps -aq --filter "ancestor=mitre/attack-navigator"
+  docker ps -aq --filter "ancestor=tenable-attack-mapper"
+)"
+ids="$(printf '%s\n' "${ids}" | sort -u | grep . || true)"
 if [ -n "${ids}" ]; then
   docker rm -f ${ids} 2>/dev/null || true
 fi
-docker image rm attack-navigator:local 2>/dev/null || true
 
-echo "Done. For a fresh start, ask \"open the attack matrix\" again (or run"
-echo "docker compose up -d viewer inside the attack-navigator checkout)."
+echo "==> Removing built images and the compose network"
+docker image rm attack-navigator:local 2>/dev/null || true
+docker image rm tenable-attack-mapper 2>/dev/null || true
+docker network rm attack-navigator_default 2>/dev/null || true
+
+echo "Done. For a fresh start, ask \"open the attack matrix\" again."

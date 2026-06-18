@@ -133,6 +133,13 @@ Semantic mapping uses a hosted LLM API — **Anthropic** (default) or **Google G
 fast model (Haiku / Gemini Flash) over ~1000 findings is small, and results are cached
 so you only pay once per plugin.
 
+## Fresh start
+
+`./uninstall.sh` blows away everything this tool runs in Docker — the
+attack-navigator viewer/Navigator containers, their image, network and volumes,
+plus any stray containers from earlier runs. It's scoped by name/image/compose
+project, so unrelated containers (e.g. a Tenable SC lab box) are never touched.
+
 ---
 
 **More:** [how mapping works](docs/mapping.md) · [CLI, OpenCode & tools](docs/usage.md) ·
