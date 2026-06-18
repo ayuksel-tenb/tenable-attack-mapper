@@ -34,3 +34,6 @@ data/.semantic_cache.json
 # Generated coverage report and nested viewer clone (from the show-matrix skill)
 coverage.md
 /attack-navigator/
+
+# Test env with creds is intentionally not committed
+.env_test

@@ -39,11 +39,12 @@ in any new terminal.
 ### 3. Configure
 
 ```bash
-cp .env_test .env
+cp .env.example .env
 ```
 
-The test Security Center is pre-filled. Add one key in `.env` for semantic mapping:
-`ANTHROPIC_API_KEY=sk-ant-...`. Prefer Google Gemini? Set `TASC_SEMANTIC_BACKEND=gemini`
+Set your Security Center URL and keys (`TSC_URL` / `TSC_ACCESS_KEY` / `TSC_SECRET_KEY`)
+and one key for semantic mapping: `ANTHROPIC_API_KEY=sk-ant-...`. Prefer Google
+Gemini? Set `TASC_SEMANTIC_BACKEND=gemini`
 and `GEMINI_API_KEY=...` (and `pip install -e '.[gemini]'`).
 
 ### 4. Connect it to Claude Code

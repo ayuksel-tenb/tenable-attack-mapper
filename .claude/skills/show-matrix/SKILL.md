@@ -17,9 +17,9 @@ tenable-attack-mapper repo root.
 
 ## Steps
 
-1. **Check config.** Ensure `.env` exists. If not, tell the user:
-   `cp .env_test .env` and set `ANTHROPIC_API_KEY` in it, then retry. Do not
-   invent credentials.
+1. **Check config.** Ensure `.env` exists with the Security Center URL/keys and an
+   `ANTHROPIC_API_KEY`. If not, tell the user to `cp .env.example .env` and fill it
+   in, then retry. Do not invent credentials.
 
 2. **Clone the viewer if missing:**
    ```bash
