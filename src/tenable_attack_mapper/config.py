@@ -63,8 +63,10 @@ class Config:
     model: str = DEFAULT_ANTHROPIC_MODEL
     gemini_api_key: str | None = None
     gemini_model: str = DEFAULT_GEMINI_MODEL
-    # Number of concurrent semantic calls (the slow part at scale).
-    semantic_workers: int = 8
+    # Number of concurrent semantic calls. Higher = faster; the Anthropic SDK
+    # backs off on 429s (respecting Retry-After), so it self-throttles to your
+    # rate limit rather than exceeding it. Raise further on higher API tiers.
+    semantic_workers: int = 20
     # By default the semantic layer maps only CVE-bearing findings (the in-scope
     # exploitation universe). Set True to also map no-CVE compliance/scan-info.
     semantic_include_no_cve: bool = False
@@ -126,7 +128,7 @@ def load_config(*, require_sc: bool = True) -> Config:
         model=os.getenv("ANTHROPIC_MODEL", DEFAULT_ANTHROPIC_MODEL),
         gemini_api_key=_env("GEMINI_API_KEY", "GOOGLE_API_KEY") or None,
         gemini_model=os.getenv("GEMINI_MODEL", DEFAULT_GEMINI_MODEL),
-        semantic_workers=int(os.getenv("TASC_SEMANTIC_WORKERS", "8")),
+        semantic_workers=int(os.getenv("TASC_SEMANTIC_WORKERS", "20")),
         semantic_include_no_cve=_as_bool(
             os.getenv("TASC_SEMANTIC_NO_CVE"), default=False
         ),

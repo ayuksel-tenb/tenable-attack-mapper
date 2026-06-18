@@ -133,7 +133,10 @@ class SemanticMapper(_ApiMapper):
                  max_techniques: int = 5, cache_path: str | Path | None = None):
         from anthropic import Anthropic
 
-        self._client = Anthropic(api_key=api_key)
+        # max_retries: the SDK retries 429/overloaded with exponential backoff that
+        # respects the server's Retry-After — so high concurrency self-throttles to
+        # the account's rate limit instead of failing.
+        self._client = Anthropic(api_key=api_key, max_retries=8)
         self._model = model
         self._effort = effort
         self._init_cache(cache_path, max_techniques)
