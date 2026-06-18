@@ -85,8 +85,16 @@ def load_config(*, require_sc: bool = True) -> Config:
 
     :param require_sc: when True, raise if the Security Center credentials are
         missing. Set False for offline/unit use that only touches the mappers.
+
+    Loads ``.env`` from the current directory and from the project root next to the
+    source — so when Claude Code launches the MCP server from another working
+    directory, an editable install still reads the repo's ``.env`` (no need to
+    repeat the keys as ``--env`` flags). Real environment variables always win.
     """
-    load_dotenv()
+    load_dotenv()  # .env in the current working directory, if any
+    repo_env = Path(__file__).resolve().parents[2] / ".env"
+    if repo_env.is_file():
+        load_dotenv(repo_env, override=False)
 
     # Primary env var names are TSC_* (Tenable Security Center); the older
     # TASC_SC_* names are still accepted as a fallback.

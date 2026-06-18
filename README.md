@@ -51,13 +51,15 @@ and `GEMINI_API_KEY=...` (and `pip install -e '.[gemini]'`).
 Run this from the repo folder (step 2 already installed the server into `.venv`):
 
 ```bash
-claude mcp add --env TSC_URL=https://localhost:8443/ \
-  --env TSC_ACCESS_KEY=YOUR_KEY --env TSC_SECRET_KEY=YOUR_SECRET \
-  --env ANTHROPIC_API_KEY=sk-ant-... \
-  --transport stdio tenable-attack-mapper -- "$(pwd)/.venv/bin/tenable-attack-mapper-mcp"
+claude mcp add --transport stdio tenable-attack-mapper -- "$(pwd)/.venv/bin/tenable-attack-mapper-mcp"
 ```
 
-Use the same values as your `.env`. Then `/mcp` should show it **connected**.
+No keys to repeat — the server reads the `.env` you set in step 3, even when Claude
+Code launches it from another directory. Then `/mcp` should show it **connected**.
+
+> Installed somewhere without the repo's `.env` (e.g. a global/uvx install)? Pass
+> the keys explicitly instead: add `--env TSC_URL=… --env TSC_ACCESS_KEY=… --env
+> TSC_SECRET_KEY=… --env ANTHROPIC_API_KEY=…` before `--transport`.
 
 ### 5. Use
 
