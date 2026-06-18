@@ -65,6 +65,13 @@ _JSON_SHAPE = (
 # Technique-ID format guard so we never emit obviously malformed IDs.
 _TECH_PREFIX = "T"
 
+# Cost controls. A plugin description front-loads what matters (what the vuln is,
+# RCE/priv-esc/etc.), so a tight char cap keeps input tokens low at no real quality
+# cost. The output cap just guards against pathological long responses (a normal
+# mapping is a few hundred tokens).
+_MAX_DESC_CHARS = 1500
+_MAX_OUTPUT_TOKENS = 1024
+
 
 class _ApiMapper:
     """Shared per-finding cache + concurrent map_many for hosted-API providers."""
@@ -138,7 +145,7 @@ class SemanticMapper(_ApiMapper):
         try:
             response = self._client.messages.create(
                 model=self._model,
-                max_tokens=2000,
+                max_tokens=_MAX_OUTPUT_TOKENS,
                 system=_SYSTEM,
                 messages=[{"role": "user", "content": _finding_prompt(finding, self._max)}],
                 **self._model_params(),
@@ -273,7 +280,7 @@ def _persist_cache(path: Path | None, cache: dict, lock: threading.Lock) -> None
 
 def _finding_prompt(finding: Finding, max_techniques: int) -> str:
     cves = ", ".join(finding.cves) if finding.cves else "none"
-    desc = finding.description[:4000] if finding.description else "(no description)"
+    desc = finding.description[:_MAX_DESC_CHARS] if finding.description else "(no description)"
     return (
         f"Plugin ID: {finding.plugin_id}\nPlugin name: {finding.plugin_name}\n"
         f"CVEs: {cves}\nSeverity: {finding.severity or 'unknown'}\n\n"
