@@ -154,20 +154,32 @@ def run(
     repository_id: int | str | None = None,
     query_id: int | str | None = None,
     severities: Sequence[str] | None = None,
+    summary: bool = True,
     out_path: str | Path | None = None,
     report_path: str | Path | None = None,
 ) -> MapResult:
-    """Pull findings from Security Center, map them, and optionally write outputs."""
+    """Pull findings from Security Center, map them, and optionally write outputs.
+
+    ``summary=True`` (default) uses the fast per-plugin ``sumid`` pull and maps every
+    finding semantically on its plugin name. ``summary=False`` pulls full
+    per-finding detail (CVE + description), enabling the deterministic backbone but
+    far slower on multi-host environments.
+    """
     from .sc_client import SecurityCenterClient
 
     import sys
 
-    print("Connecting to Security Center and pulling findings…", file=sys.stderr, flush=True)
+    mode = "fast per-plugin summary" if summary else "full per-finding detail"
+    print(f"Connecting to Security Center and pulling findings ({mode})…", file=sys.stderr, flush=True)
     client = SecurityCenterClient(config)
     findings = client.fetch_findings(
-        repository_id=repository_id, query_id=query_id, severities=severities
+        repository_id=repository_id, query_id=query_id, severities=severities, summary=summary
     )
     print(f"Pulled {len(findings)} finding(s).", file=sys.stderr, flush=True)
+
+    # Summary findings carry no CVE, so there's nothing to gate on — map them all.
+    if summary:
+        config.semantic_include_no_cve = True
 
     label = _layer_label(repository_id, query_id)
     result = map_findings(config, findings, layer_name=label)

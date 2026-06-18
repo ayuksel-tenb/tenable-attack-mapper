@@ -79,9 +79,18 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Optional path for a Markdown coverage summary.",
     )
     run_p.add_argument(
+        "--detailed",
+        action="store_true",
+        help=(
+            "Pull full per-finding detail (CVE + description) for the deterministic "
+            "chain. Accurate but much slower on multi-host SCs. Default is the fast "
+            "per-plugin summary (maps on the plugin name)."
+        ),
+    )
+    run_p.add_argument(
         "--no-semantic",
         action="store_true",
-        help="Disable the Claude semantic fallback (deterministic chain only).",
+        help="Disable the semantic mapping (deterministic chain only).",
     )
     run_p.add_argument(
         "--json",
@@ -119,6 +128,7 @@ def _cmd_run(args) -> int:
         repository_id=args.repo,
         query_id=args.query,
         severities=_resolve_severities(args),
+        summary=not args.detailed,
         out_path=args.out,
         report_path=args.report,
     )
@@ -161,16 +171,25 @@ def _cmd_techniques(args) -> int:
 
 def _print_summary(result, out_path, report_path) -> None:
     s = result.summary
-    print(
-        f"Findings        : {s['findings_total']} total "
-        f"({s.get('findings_with_cve', 0)} CVE-bearing, "
-        f"{s.get('findings_no_cve', 0)} compliance/info)"
-    )
-    print(
-        f"Exploit coverage: {s.get('findings_with_cve_mapped', 0)}/"
-        f"{s.get('findings_with_cve', 0)} CVE-bearing mapped "
-        f"({s.get('cve_coverage_pct', 0)}%)"
-    )
+    # In fast (summary) mode findings carry no CVE, so report overall coverage
+    # instead of the CVE-bearing split.
+    if s.get("findings_with_cve", 0) == 0:
+        print(f"Findings        : {s['findings_total']} total")
+        print(
+            f"Coverage        : {s['findings_mapped']}/{s['findings_total']} mapped "
+            f"({round(100 * s['findings_mapped'] / max(s['findings_total'], 1))}%)"
+        )
+    else:
+        print(
+            f"Findings        : {s['findings_total']} total "
+            f"({s.get('findings_with_cve', 0)} CVE-bearing, "
+            f"{s.get('findings_no_cve', 0)} compliance/info)"
+        )
+        print(
+            f"Exploit coverage: {s.get('findings_with_cve_mapped', 0)}/"
+            f"{s.get('findings_with_cve', 0)} CVE-bearing mapped "
+            f"({s.get('cve_coverage_pct', 0)}%)"
+        )
     print(
         f"Mappings        : {s['mappings_total']} "
         f"({s['mappings_deterministic']} deterministic, "

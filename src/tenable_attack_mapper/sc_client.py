@@ -36,6 +36,11 @@ _VULN_FIELDS = (
     "description",
 )
 
+# Summary (sumid) fields: one server-aggregated row per plugin. Far faster than
+# vulndetails on multi-host environments (no per-(host,plugin) row explosion), at
+# the cost of CVE/description — semantic mapping then runs on the plugin name.
+_SUMID_FIELDS = ("pluginID", "name", "severity", "vprScore", "total", "hostTotal")
+
 
 class SecurityCenterClient:
     """Connects to Tenable.sc and yields open findings."""
@@ -66,6 +71,7 @@ class SecurityCenterClient:
         repository_id: int | str | None = None,
         query_id: int | str | None = None,
         severities: Iterable[str] | None = None,
+        summary: bool = True,
     ) -> Iterator[Finding]:
         """Stream open findings, optionally filtered.
 
@@ -73,22 +79,29 @@ class SecurityCenterClient:
         :param query_id: use a saved Security Center analysis query instead.
         :param severities: severity names to keep (e.g. ``("High", "Critical")``).
             ``None`` keeps everything the query returns.
+        :param summary: when True (default), use the fast per-plugin ``sumid`` tool
+            (no CVE/description — map on the plugin name). When False, use
+            ``vulndetails`` for full per-finding data (CVE + description), which is
+            much slower on multi-host environments.
         """
         sc = self.connect()
         filters = []
         if repository_id is not None:
             filters.append(("repositoryIDs", "=", str(repository_id)))
 
-        kwargs: dict = {"tool": "vulndetails", "fields": list(_VULN_FIELDS)}
+        tool = "sumid" if summary else "vulndetails"
+        fields = _SUMID_FIELDS if summary else _VULN_FIELDS
+        kwargs: dict = {"tool": tool, "fields": list(fields)}
         if query_id is not None:
             kwargs["query_id"] = int(query_id)
         if filters:
             kwargs["filters"] = filters
 
         wanted = {s.lower() for s in severities} if severities else None
+        build = _finding_from_sumid if summary else _finding_from_raw
 
         for raw in sc.analysis.vulns(**kwargs):
-            finding = _finding_from_raw(raw)
+            finding = build(raw)
             if wanted is not None and finding.severity.lower() not in wanted:
                 continue
             yield finding
@@ -133,6 +146,34 @@ def _finding_from_raw(raw: dict) -> Finding:
         cves=cves,
         description=(raw.get("description") or "").strip(),
         count=1,
+    )
+
+
+def _finding_from_sumid(raw: dict) -> Finding:
+    """Normalize one ``sumid`` (per-plugin summary) row into a :class:`Finding`.
+
+    No CVE/description are available at this aggregation level, so semantic mapping
+    runs on the plugin name. ``count`` is the affected-host count.
+    """
+    vpr_raw = raw.get("vprScore")
+    try:
+        vpr = float(vpr_raw) if vpr_raw not in (None, "", "N/A") else None
+    except (TypeError, ValueError):
+        vpr = None
+
+    try:
+        count = int(raw.get("hostTotal") or raw.get("total") or 1)
+    except (TypeError, ValueError):
+        count = 1
+
+    return Finding(
+        plugin_id=str(raw.get("pluginID", "")).strip(),
+        plugin_name=(raw.get("name") or "").strip(),
+        severity=_severity_name(raw.get("severity")),
+        vpr_score=vpr,
+        cves=[],
+        description="",
+        count=count,
     )
 
 

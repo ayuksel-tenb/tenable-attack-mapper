@@ -8,6 +8,7 @@ Extra ways to run the tool, beyond the [README](../README.md) Quickstart.
 |---|---|
 | `tenable-attack-mapper run --out layer.json --report coverage.md` | Pull, map, export. |
 | `tenable-attack-mapper run --repo 7 --out layer.json` | Scope to one repository. |
+| `tenable-attack-mapper run --detailed` | Full per-finding pull (CVE + description, deterministic chain) — accurate but much slower on multi-host SCs. Default is the fast per-plugin summary, mapping on the plugin name. |
 | `tenable-attack-mapper run --no-semantic` | Deterministic chain only. |
 | `tenable-attack-mapper run --include-info` | Include Info-severity findings. |
 | `tenable-attack-mapper techniques T1190 T1059` | Which findings map to these techniques? |
