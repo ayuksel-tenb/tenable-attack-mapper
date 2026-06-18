@@ -14,22 +14,24 @@ vulnerabilities behind it, each linking to its detail page on your Security Cent
 than pip, and it manages the right Python version for you. One-time install:
 
 ```bash
-curl -LsSf https://astral.sh/uv/install.sh | bash    # Windows: see https://docs.astral.sh/uv/
+curl -LsSf https://astral.sh/uv/install.sh | bash
 ```
 
-Then open a **new terminal** so `uv` is on your PATH.
+Then open a **new terminal** so `uv` is on your PATH. On Windows, see the
+[uv install docs](https://docs.astral.sh/uv/).
 
 ### 2. Install the tool
 
 ```bash
 git clone https://github.com/ayuksel-tenb/tenable-attack-mapper
 cd tenable-attack-mapper
-uv venv && source .venv/bin/activate                 # Windows: .venv\Scripts\activate
+uv venv && source .venv/bin/activate
 uv pip install -e .
 ```
 
 The virtualenv keeps deps isolated (no clashes with a base/conda Python).
-Re-activate it (`source .venv/bin/activate`) in any new terminal.
+Re-activate it (`source .venv/bin/activate`, or `.venv\Scripts\activate` on Windows)
+in any new terminal.
 
 > No uv? `python3 -m venv .venv && source .venv/bin/activate && pip install -e .`
 > (Python 3.12+) works too — just slower.

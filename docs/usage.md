@@ -4,13 +4,13 @@ Extra ways to run the tool, beyond the [README](../README.md) Quickstart.
 
 ## CLI (no Claude needed)
 
-```bash
-tenable-attack-mapper run --out layer.json --report coverage.md   # pull, map, export
-tenable-attack-mapper run --repo 7 --out layer.json               # one repository
-tenable-attack-mapper run --no-semantic                           # deterministic only
-tenable-attack-mapper run --include-info                          # include Info severity
-tenable-attack-mapper techniques T1190 T1059                      # which findings map here?
-```
+| Command | What it does |
+|---|---|
+| `tenable-attack-mapper run --out layer.json --report coverage.md` | Pull, map, export. |
+| `tenable-attack-mapper run --repo 7 --out layer.json` | Scope to one repository. |
+| `tenable-attack-mapper run --no-semantic` | Deterministic chain only. |
+| `tenable-attack-mapper run --include-info` | Include Info-severity findings. |
+| `tenable-attack-mapper techniques T1190 T1059` | Which findings map to these techniques? |
 
 Default severity scope is Critical/High/Medium/Low (Info excluded).
 
@@ -58,5 +58,8 @@ just `uvx tenable-attack-mapper-mcp`.)
 git clone https://github.com/ayuksel-tenb/attack-navigator
 tenable-attack-mapper run --out attack-navigator/layers/layer.json
 cd attack-navigator && docker compose up -d viewer
-open http://localhost:8080            # macOS · Linux: xdg-open · Windows: start
+open http://localhost:8080
 ```
+
+Open `http://localhost:8080` with `open` on macOS, `xdg-open` on Linux, or `start`
+on Windows.

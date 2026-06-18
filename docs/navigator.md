@@ -32,8 +32,9 @@ You have three options:
 
   ```bash
   docker run -p 4200:4200 mitre/attack-navigator
-  # then browse to http://localhost:4200
   ```
+
+  Then browse to `http://localhost:4200`.
 
 - **On-prem viewer with finding drill-down (recommended for sensitive data):**
   the separate **[attack-navigator](https://github.com/ayuksel-tenb/attack-navigator)**
