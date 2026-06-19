@@ -1,8 +1,10 @@
 # Tenable ATT&CK Mapper
 
-Map your **Tenable Security Center** findings to **MITRE ATT&CK** and open a
-**VPR-scored ATT&CK matrix** in your browser — click any technique to see the
-vulnerabilities behind it, each linking to its detail page on your Security Center.
+An **MCP server** that maps your **Tenable Security Center** findings to **MITRE
+ATT&CK**, then lets you ask your LLM (Claude Code) — in plain language — to analyze
+your exposure by any tactic or technique. Want the visual? Open a **VPR-scored ATT&CK
+matrix** in your browser and click any technique to see the vulnerabilities behind it,
+each linking to its detail page on your Security Center.
 
 ---
 
