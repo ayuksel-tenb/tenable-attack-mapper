@@ -6,6 +6,8 @@ your exposure by any tactic or technique. Want the visual? Open a **VPR-scored A
 matrix** in your browser and click any technique to see the vulnerabilities behind it,
 each linking to its detail page on your Security Center.
 
+![The Tenable → ATT&CK Exposure matrix: techniques across the ATT&CK tactics, shaded by VPR exposure, with per-technique vulnerability counts.](docs/images/attack-matrix.png)
+
 ---
 
 ## Quickstart
