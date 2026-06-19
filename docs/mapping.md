@@ -43,13 +43,13 @@ CVE carries a CWE.
 
 For findings the backbone can't reach, the model reads the plugin name + description
 and proposes ATT&CK techniques, each with a confidence and reason_code — as auditable
-as a deterministic link. It calls a hosted LLM API (`TASC_SEMANTIC_BACKEND`):
-**`anthropic`** (default, `ANTHROPIC_API_KEY` / `ANTHROPIC_MODEL`, default
-`claude-haiku-4-5`) or **`gemini`** (`GEMINI_API_KEY` / `GEMINI_MODEL`, default
-`gemini-2.5-flash`). One call per finding, concurrent (`TASC_SEMANTIC_WORKERS`),
-cached per plugin (`data/.semantic_cache.json`, so re-runs are free), mapping only
-CVE-bearing findings by default (`TASC_SEMANTIC_NO_CVE=true` to include
-compliance/scan-info).
+as a deterministic link. It shells out to the local **`claude` CLI** (`claude -p`),
+billed to your Claude Code subscription — no API key, no per-token cost.
+`TASC_CLAUDE_MODEL` picks the model (default `claude-haiku-4-5`); `TASC_CLAUDE_BIN`
+overrides the binary path. Findings are batched and the batches run concurrently
+(`TASC_SEMANTIC_WORKERS`), cached per plugin (`data/.semantic_cache.json`, so re-runs
+are free), mapping only CVE-bearing findings by default (`TASC_SEMANTIC_NO_CVE=true`
+to include compliance/scan-info).
 
 ## Coverage & honesty
 

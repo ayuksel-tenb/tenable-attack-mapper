@@ -18,9 +18,8 @@ except ImportError:  # pragma: no cover
         return False
 
 
-# Default models per provider (fast tiers). Override via ANTHROPIC_MODEL / GEMINI_MODEL.
-DEFAULT_ANTHROPIC_MODEL = "claude-haiku-4-5"
-DEFAULT_GEMINI_MODEL = "gemini-2.5-flash"
+# Semantic mapping runs through the local `claude` CLI. haiku = fast.
+DEFAULT_CLAUDE_MODEL = "claude-haiku-4-5"
 
 # Mappings scored below this confidence are flagged "needs-review" rather than
 # being silently trusted.
@@ -57,15 +56,10 @@ class Config:
 
     # Disable the semantic layer entirely — deterministic chain only.
     enable_semantic: bool = True
-    # Semantic provider: "anthropic" (default) or "gemini".
-    semantic_backend: str = "anthropic"
-    anthropic_api_key: str | None = None
-    model: str = DEFAULT_ANTHROPIC_MODEL
-    gemini_api_key: str | None = None
-    gemini_model: str = DEFAULT_GEMINI_MODEL
-    # Number of concurrent semantic calls. Higher = faster; the Anthropic SDK
-    # backs off on 429s (respecting Retry-After), so it self-throttles to your
-    # rate limit rather than exceeding it. Raise further on higher API tiers.
+    # Model for the `claude` CLI (semantic mapping runs on your Claude Code
+    # subscription via `claude -p`).
+    claude_cli_model: str = DEFAULT_CLAUDE_MODEL
+    # Number of concurrent `claude -p` calls (batched).
     semantic_workers: int = 20
     # By default the semantic layer maps only CVE-bearing findings (the in-scope
     # exploitation universe). Set True to also map no-CVE compliance/scan-info.
@@ -75,11 +69,7 @@ class Config:
 
     @property
     def semantic_available(self) -> bool:
-        if not self.enable_semantic:
-            return False
-        if self.semantic_backend == "gemini":
-            return bool(self.gemini_api_key)
-        return bool(self.anthropic_api_key)
+        return self.enable_semantic
 
 
 def load_config(*, require_sc: bool = True) -> Config:
@@ -123,11 +113,7 @@ def load_config(*, require_sc: bool = True) -> Config:
         sc_verify_ssl=verify_ssl,
         confidence_threshold=threshold,
         enable_semantic=enable_semantic,
-        semantic_backend=os.getenv("TASC_SEMANTIC_BACKEND", "anthropic").strip().lower(),
-        anthropic_api_key=os.getenv("ANTHROPIC_API_KEY") or None,
-        model=os.getenv("ANTHROPIC_MODEL", DEFAULT_ANTHROPIC_MODEL),
-        gemini_api_key=_env("GEMINI_API_KEY", "GOOGLE_API_KEY") or None,
-        gemini_model=os.getenv("GEMINI_MODEL", DEFAULT_GEMINI_MODEL),
+        claude_cli_model=os.getenv("TASC_CLAUDE_MODEL", DEFAULT_CLAUDE_MODEL),
         semantic_workers=int(os.getenv("TASC_SEMANTIC_WORKERS", "20")),
         semantic_include_no_cve=_as_bool(
             os.getenv("TASC_SEMANTIC_NO_CVE"), default=False

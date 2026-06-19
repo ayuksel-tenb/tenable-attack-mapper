@@ -44,19 +44,15 @@ def test_scoring_weights_by_vpr_and_normalizes_to_100():
     assert all(0.0 <= s.score <= 100.0 for s in scores)
 
 
-def test_build_semantic_mapper_selects_provider(config):
+def test_build_semantic_mapper_returns_claude_cli(config):
     from tenable_attack_mapper.mapping.semantic import (
-        GeminiSemanticMapper,
-        SemanticMapper,
+        ClaudeCliSemanticMapper,
         build_semantic_mapper,
     )
 
-    config.anthropic_api_key = "x"
-    assert isinstance(build_semantic_mapper(config, None), SemanticMapper)
-
-    config.semantic_backend = "gemini"
-    config.gemini_api_key = "x"
-    assert isinstance(build_semantic_mapper(config, None), GeminiSemanticMapper)
+    mapper = build_semantic_mapper(config, None)
+    assert isinstance(mapper, ClaudeCliSemanticMapper)
+    assert mapper._model == config.claude_cli_model
 
 
 def test_default_vpr_used_when_missing():

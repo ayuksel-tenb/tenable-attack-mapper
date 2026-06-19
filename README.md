@@ -42,10 +42,11 @@ in any new terminal.
 cp .env.example .env
 ```
 
-Set your Security Center URL and keys (`TSC_URL` / `TSC_ACCESS_KEY` / `TSC_SECRET_KEY`)
-and one key for semantic mapping: `ANTHROPIC_API_KEY=sk-ant-...`. Prefer Google
-Gemini? Set `TASC_SEMANTIC_BACKEND=gemini`
-and `GEMINI_API_KEY=...` (and `pip install -e '.[gemini]'`).
+Set your Security Center URL and keys (`TSC_URL` / `TSC_ACCESS_KEY` / `TSC_SECRET_KEY`).
+That's the only required config — semantic mapping runs through the local `claude`
+CLI on your **Claude Code subscription** (no API key, no per-token cost), so just make
+sure `claude` is on your PATH and logged in (`claude login`). Optional: tune
+`TASC_CLAUDE_MODEL` (default `claude-haiku-4-5`) and `TASC_SEMANTIC_WORKERS`.
 
 ### 4. Connect it to Claude Code
 
@@ -60,7 +61,7 @@ Code launches it from another directory. Then `/mcp` should show it **connected*
 
 > Installed somewhere without the repo's `.env` (e.g. a global/uvx install)? Pass
 > the keys explicitly instead: add `--env TSC_URL=… --env TSC_ACCESS_KEY=… --env
-> TSC_SECRET_KEY=… --env ANTHROPIC_API_KEY=…` before `--transport`.
+> TSC_SECRET_KEY=…` before `--transport`.
 
 ### 5. Use
 
@@ -112,8 +113,8 @@ not waiting on your SC or network.
 
 **What data leaves my machine? Do my IPs / ports / hostnames get sent anywhere?**
 **No host-identifying data leaves your machine.** For the semantic step, the only
-thing sent to your LLM provider (Anthropic, or Google Gemini if configured) is generic
-vulnerability info: the **plugin ID, plugin name, CVE IDs, and the plugin description**
+thing the local `claude` CLI sends to Anthropic is generic vulnerability info: the
+**plugin ID, plugin name, CVE IDs, and the plugin description**
 (truncated) — all of which is public, vendor-published data.
 **Never sent:** IP addresses, ports, hostnames, MAC addresses, asset/host counts,
 VPR scores, or your Security Center URL and API keys. The tool doesn't even *fetch*
@@ -128,10 +129,10 @@ Entirely on your machine. The layer JSON is written locally, the viewer runs in 
 containers, and `layers/*.json` is git-ignored so exposure data is never committed.
 
 **Which LLM does it use, and what does it cost?**
-Semantic mapping uses a hosted LLM API — **Anthropic** (default) or **Google Gemini**
-(`TASC_SEMANTIC_BACKEND=gemini`). You bring your own API key; cost is per-token, but a
-fast model (Haiku / Gemini Flash) over ~1000 findings is small, and results are cached
-so you only pay once per plugin.
+Semantic mapping shells out to the local **`claude` CLI** (default model
+`claude-haiku-4-5`), billed to your **Claude Code subscription** — no API key and no
+per-token cost. Calls are batched, run in parallel (`TASC_SEMANTIC_WORKERS`), and
+cached per plugin, so a re-run over the same findings is free.
 
 ## Fresh start
 

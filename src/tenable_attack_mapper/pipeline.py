@@ -68,8 +68,8 @@ def map_findings(
 
     The deterministic chain runs first for every finding. The semantic layer is
     only invoked for findings the deterministic chain could not map, and only
-    when a Claude API key is configured — keeping the authoritative source
-    primary and the LLM a documented fallback.
+    when it is enabled — keeping the authoritative source primary and the LLM
+    (the local ``claude`` CLI) a documented fallback.
     """
     warnings: list[str] = []
     deterministic_mapper = DeterministicMapper(config.data_dir)

@@ -27,13 +27,12 @@ dependencies = [
     "pyTenable>=1.5",
     "python-dotenv>=1.0",
     "mcp>=1.2",
-    "anthropic>=0.40",
 ]
 
 [project.optional-dependencies]
-# Google Gemini provider (TASC_SEMANTIC_BACKEND=gemini).
-gemini = ["google-genai>=1.0"]
-dev = ["pytest>=8.0", "google-genai>=1.0"]
+# Semantic mapping runs through the local `claude` CLI (Claude Code subscription),
+# so there is no Python LLM SDK dependency.
+dev = ["pytest>=8.0"]
 
 [project.scripts]
 tenable-attack-mapper = "tenable_attack_mapper.cli:main"
